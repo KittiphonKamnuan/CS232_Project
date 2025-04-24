@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InfoHub 360</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+  <div class="flex flex-col h-screen">
+    <!-- Top Navigation -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="logo">
+          <i class="fas fa-cube"></i>
+          <span>InfoHub 360</span>
+        </div>
+        <div class="user-section">
+          <span class="user-greeting">สวัสดี, คุณสมชาย (พนักงานขาย)</span>
+          <div class="notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-count">3</span>
+            <div class="notification-dropdown">
+              <div class="notification-header">
+                <p>การแจ้งเตือน</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">ตรวจสอบลูกค้า: คุณนภา</p>
+                <p class="notification-desc">ส่งใบเสนอราคาแล้ว 2 วัน</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">สต๊อกใกล้หมด: TV Samsung QN90C</p>
+                <p class="notification-desc">เหลือเพียง 2 เครื่อง</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">โปรโมชันใหม่: เครื่องใช้ไฟฟ้า</p>
+                <p class="notification-desc">เริ่ม 15 เม.ย. - 30 เม.ย. 2568</p>
+              </div>
+            </div>
+          </div>
+          <div class="user-avatar">
+            <span>ส</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-menu">
+          <a href="#" class="menu-item active" data-tab="search">
+            <i class="fas fa-search"></i>
+            <span>ค้นหาสินค้า</span>
+          </a>
+          <a href="#" class="menu-item" data-tab="customers">
+            <i class="fas fa-users"></i>
+            <span>ลูกค้าของฉัน</span>
+          </a>
+          <a href="#" class="menu-item" data-tab="sales">
+            <i class="fas fa-chart-line"></i>
+            <span>ติดตามการขาย</span>
+          </a>
+          <a href="#" class="menu-item" data-tab="documents">
+            <i class="fas fa-file-pdf"></i>
+            <span>เอกสาร</span>
+          </a>
+        </div>
+        <div class="sidebar-footer">
+          <a href="#" class="menu-item">
+            <i class="fas fa-cog"></i>
+            <span>ตั้งค่า</span>
+          </a>
+          <a href="#" class="menu-item">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>ออกจากระบบ</span>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Content Area -->
+      <div class="content">
+        <!-- Search Tab (Default Active) -->
+        <div id="search-tab" class="tab-content active">
+          <div class="section-header">
+            <h1>ค้นหาสินค้า</h1>
+            <p>ค้นหาด้วยชื่อสินค้า, รหัส, คุณสมบัติ หรือช่วงราคา</p>
+            
+            <div class="search-form">
+              <div class="search-input">
+                <input type="text" placeholder="ค้นหาสินค้า...">
+                <i class="fas fa-search"></i>
+              </div>
+              <div>
+                <select>
+                  <option>ทุกหมวดหมู่</option>
+                  <option>ทีวี</option>
+                  <option>เครื่องซักผ้า</option>
+                  <option>ตู้เย็น</option>
+                  <option>เครื่องปรับอากาศ</option>
+                </select>
+              </div>
+              <div>
+                <button class="btn btn-primary">
+                  ค้นหา
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>ผลการค้นหาล่าสุด</h2>
+            
+            <!-- Product Card 1 -->
+            <div class="product-card">
+              <div class="product-image">
+                <img src="/api/placeholder/200/150" alt="TV Samsung">
+              </div>
+              <div class="product-details">
+                <h3>Samsung QN90C 55" QLED 4K Smart TV</h3>
+                <p class="product-code">รหัสสินค้า: TV-SAM-QN90C-55</p>
+                <div class="stock-status">
+                  <span class="in-stock">มีสินค้า</span>
+                  <span class="stock-count">(เหลือ 2 เครื่อง)</span>
+                </div>
+                <p class="delivery-info"><span>จัดส่ง:</span> ภายใน 1-2 วัน</p>
+                <div class="document-links">
+                  <a href="#" class="document-link">
+                    <i class="fas fa-file-pdf"></i> สเปคสินค้า
+                  </a>
+                  <a href="#" class="document-link">
+                    <i class="fas fa-file-pdf"></i> คู่มือการใช้งาน
+                  </a>
+                  <a href="#" class="document-link">
+                    <i class="fas fa-file-pdf"></i> เปรียบเทียบรุ่น
+                  </a>
+                </div>
+              </div>
+              <div class="product-action">
+                <div>
+                  <p class="price">฿45,990</p>
+                  <p class="original-price">฿49,990</p>
+                  <p class="discount">ลด 8%</p>
+                </div>
+                <div class="action-buttons">
+                  <button class="btn btn-primary">
+                    <i class="fas fa-shopping-cart"></i> เพิ่มการขาย
+                  </button>
+                  <button class="btn btn-outline" id="openShareModal">
+                    <i class="fas fa-share-alt"></i> ส่งให้ลูกค้า
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Product Card 2 -->
+            <div class="product-card">
+              <div class="product-image">
+                <img src="/api/placeholder/200/150" alt="TV Samsung">
+              </div>
+              <div class="product-details">
+                <h3>Samsung BU8100 55" Crystal UHD 4K Smart TV</h3>
+                <p class="product-code">รหัสสินค้า: TV-SAM-BU8100-55</p>
+                <div class="stock-status">
+                  <span class="in-stock">มีสินค้า</span>
+                  <span class="stock-count">(เหลือ 12 เครื่อง)</span>
+                </div>
+                <p class="delivery-info"><span>จัดส่ง:</span> พร้อมส่งทันที</p>
+                <div class="document-links">
+                  <a href="#" class="document-link">
+                    <i class="fas fa-file-pdf"></i> สเปคสินค้า
+                  </a>
+                  <a href="#" class="document-link">
+                    <i class="fas fa-file-pdf"></i> คู่มือการใช้งาน
+                  </a>
+                  <a href="#" class="document-link">
+                    <i class="fas fa-file-pdf"></i> เปรียบเทียบรุ่น
+                  </a>
+                </div>
+              </div>
+              <div class="product-action">
+                <div>
+                  <p class="price">฿17,990</p>
+                  <p class="original-price">฿20,990</p>
+                  <p class="discount">ลด 14%</p>
+                </div>
+                <div class="action-buttons">
+                  <button class="btn btn-primary">
+                    <i class="fas fa-shopping-cart"></i> เพิ่มการขาย
+                  </button>
+                  <button class="btn btn-outline">
+                    <i class="fas fa-share-alt"></i> ส่งให้ลูกค้า
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Loading More -->
+            <div class="load-more">
+              <button class="btn-link">
+                แสดงเพิ่มเติม
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Customers Tab -->
+        <div id="customers-tab" class="tab-content">
+          <div class="section-header">
+            <h1>ลูกค้าของฉัน</h1>
+            <p>จัดการและติดตามข้อมูลลูกค้า</p>
+            
+            <div class="search-form">
+              <div class="search-input">
+                <input type="text" placeholder="ค้นหาลูกค้า...">
+                <i class="fas fa-search"></i>
+              </div>
+              <div>
+                <select>
+                  <option>ทั้งหมด</option>
+                  <option>กำลังติดต่อ</option>
+                  <option>รอเสนอราคา</option>
+                  <option>รอตัดสินใจ</option>
+                  <option>ปิดการขาย</option>
+                </select>
+              </div>
+              <div>
+                <button class="btn btn-success">
+                  <i class="fas fa-plus"></i> เพิ่มลูกค้า
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>รายชื่อลูกค้า</h2>
+            
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ชื่อลูกค้า</th>
+                    <th>ติดต่อล่าสุด</th>
+                    <th>สินค้าที่สนใจ</th>
+                    <th>สถานะ</th>
+                    <th>การจัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="customer-info">
+                        <div class="customer-avatar">น</div>
+                        <div>
+                          <p class="customer-name">คุณนภา วงศ์ประดิษฐ์</p>
+                          <p class="customer-phone">089-123-4567</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <p>15 เม.ย. 2568</p>
+                      <p class="time">13:45 น.</p>
+                    </td>
+                    <td>
+                      <p>เครื่องปรับอากาศ Daikin</p>
+                      <p class="model">รุ่น FTKC15UV2S</p>
+                    </td>
+                    <td>
+                      <span class="status status-warning">ส่งใบเสนอราคาแล้ว</span>
+                    </td>
+                    <td>
+                      <div class="action-icons">
+                        <button class="action-btn action-edit">
+                          <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn action-call">
+                          <i class="fas fa-phone"></i>
+                        </button>
+                        <button class="action-btn action-doc">
+                          <i class="fas fa-file-alt"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="customer-info">
+                        <div class="customer-avatar">ส</div>
+                        <div>
+                          <p class="customer-name">คุณสมศักดิ์ ใจดี</p>
+                          <p class="customer-phone">062-987-6543</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <p>14 เม.ย. 2568</p>
+                      <p class="time">09:20 น.</p>
+                    </td>
+                    <td>
+                      <p>TV Samsung QN90C</p>
+                      <p class="model">55 นิ้ว</p>
+                    </td>
+                    <td>
+                      <span class="status status-success">ยืนยันการสั่งซื้อ</span>
+                    </td>
+                    <td>
+                      <div class="action-icons">
+                        <button class="action-btn action-edit">
+                          <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn action-call">
+                          <i class="fas fa-phone"></i>
+                        </button>
+                        <button class="action-btn action-doc">
+                          <i class="fas fa-file-alt"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="customer-info">
+                        <div class="customer-avatar">ป</div>
+                        <div>
+                          <p class="customer-name">คุณประภา เจริญพร</p>
+                          <p class="customer-phone">091-234-5678</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <p>13 เม.ย. 2568</p>
+                      <p class="time">16:30 น.</p>
+                    </td>
+                    <td>
+                      <p>เครื่องซักผ้า LG</p>
+                      <p class="model">รุ่น F2721HVRB</p>
+                    </td>
+                    <td>
+                      <span class="status status-info">สอบถามข้อมูล</span>
+                    </td>
+                    <td>
+                      <div class="action-icons">
+                        <button class="action-btn action-edit">
+                          <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn action-call">
+                          <i class="fas fa-phone"></i>
+                        </button>
+                        <button class="action-btn action-doc">
+                          <i class="fas fa-file-alt"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="pagination">
+              <div class="pagination-info">
+                แสดง 1-3 จาก 24 รายการ
+              </div>
+              <div class="pagination-controls">
+                <button class="pagination-btn"><i class="fas fa-chevron-left"></i></button>
+                <button class="pagination-btn active">1</button>
+                <button class="pagination-btn">2</button>
+                <button class="pagination-btn">3</button>
+                <button class="pagination-btn"><i class="fas fa-chevron-right"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sales Tab -->
+        <div id="sales-tab" class="tab-content">
+          <div class="section-header">
+            <h1>ติดตามการขาย</h1>
+            <p>วิเคราะห์และติดตามประสิทธิภาพการขาย</p>
+          </div>
+          
+          <div class="stats-cards">
+            <div class="stat-card">
+              <h3>การขายทั้งหมด</h3>
+              <p class="stat-value">12</p>
+              <p class="stat-period">เดือนเมษายน 2568</p>
+              <div class="stat-change positive">
+                <i class="fas fa-arrow-up"></i> เพิ่มขึ้น 20% จากเดือนก่อน
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <h3>มูลค่าการขาย</h3>
+              <p class="stat-value">฿342,500</p>
+              <p class="stat-period">เดือนเมษายน 2568</p>
+              <div class="stat-change positive">
+                <i class="fas fa-arrow-up"></i> เพิ่มขึ้น 15% จากเดือนก่อน
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <h3>ลูกค้ารอติดตาม</h3>
+              <p class="stat-value">8</p>
+              <p class="stat-period">ต้องติดตามภายใน 7 วัน</p>
+              <div class="stat-change negative">
+                <i class="fas fa-exclamation-triangle"></i> มี 3 รายการที่ต้องติดตามวันนี้
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>กระบวนการขาย (Sales Pipeline)</h2>
+            
+            <div class="pipeline-container">
+              <div class="pipeline-stages">
+                <!-- Stage 1 -->
+                <div class="pipeline-stage">
+                  <h4>สอบถามข้อมูล</h4>
+                  <div class="stage-count info">
+                    <span>4</span>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณประภา</p>
+                    <p class="item-desc">เครื่องซักผ้า LG</p>
+                    <p class="item-date">13 เม.ย.</p>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณวิชัย</p>
+                    <p class="item-desc">TV Sony</p>
+                    <p class="item-date">12 เม.ย.</p>
+                  </div>
+                  
+                  <div class="show-more">
+                    แสดงทั้งหมด
+                  </div>
+                </div>
+                
+                <!-- Stage 2 -->
+                <div class="pipeline-stage">
+                  <h4>ลูกค้าสนใจ</h4>
+                  <div class="stage-count info">
+                    <span>3</span>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณมานะ</p>
+                    <p class="item-desc">ตู้เย็น Samsung</p>
+                    <p class="item-date">14 เม.ย.</p>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณพิมพ์</p>
+                    <p class="item-desc">เครื่องปรับอากาศ</p>
+                    <p class="item-date">13 เม.ย.</p>
+                  </div>
+                  
+                  <div class="show-more">
+                    แสดงทั้งหมด
+                  </div>
+                </div>
+                
+                <!-- Stage 3 -->
+                <div class="pipeline-stage">
+                  <h4>ส่งใบเสนอราคา</h4>
+                  <div class="stage-count warning">
+                    <span>2</span>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณนภา</p>
+                    <p class="item-desc">เครื่องปรับอากาศ</p>
+                    <p class="item-date">15 เม.ย.</p>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณธีรพล</p>
+                    <p class="item-desc">เครื่องซักผ้า</p>
+                    <p class="item-date">12 เม.ย.</p>
+                  </div>
+                </div>
+                
+                <!-- Stage 4 -->
+                <div class="pipeline-stage">
+                  <h4>ต่อรองราคา</h4>
+                  <div class="stage-count warning">
+                    <span>1</span>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณสมใจ</p>
+                    <p class="item-desc">เครื่องใช้ไฟฟ้าชุด</p>
+                    <p class="item-date">11 เม.ย.</p>
+                  </div>
+                </div>
+                
+                <!-- Stage 5 -->
+                <div class="pipeline-stage">
+                  <h4>ยืนยันการสั่งซื้อ</h4>
+                  <div class="stage-count success">
+                    <span>1</span>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณสมศักดิ์</p>
+                    <p class="item-desc">TV Samsung</p>
+                    <p class="item-date">14 เม.ย.</p>
+                  </div>
+                </div>
+                
+                <!-- Stage 6 -->
+                <div class="pipeline-stage">
+                  <h4>ส่งมอบสินค้า</h4>
+                  <div class="stage-count success">
+                    <span>2</span>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณมนตรี</p>
+                    <p class="item-desc">เครื่องซักผ้า LG</p>
+                    <p class="item-date">10 เม.ย.</p>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณปิยะ</p>
+                    <p class="item-desc">ทีวี Sony</p>
+                    <p class="item-date">9 เม.ย.</p>
+                  </div>
+                </div>
+                
+                <!-- Stage 7 -->
+                <div class="pipeline-stage">
+                  <h4>บริการหลังการขาย</h4>
+                  <div class="stage-count purple">
+                    <span>1</span>
+                  </div>
+                  
+                  <div class="stage-item">
+                    <p class="item-title">คุณนิภา</p>
+                    <p class="item-desc">เครื่องปรับอากาศ</p>
+                    <p class="item-date">5 เม.ย.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>สินค้าขายดีประจำเดือน</h2>
+            
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>สินค้า</th>
+                    <th>หมวดหมู่</th>
+                    <th>จำนวนที่ขายได้</th>
+                    <th>มูลค่า</th>
+                    <th>เทียบกับเดือนก่อน</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="product-brief">
+                        <div class="product-thumbnail"></div>
+                        <p class="product-name">TV Samsung QN90C 55"</p>
+                      </div>
+                    </td>
+                    <td>โทรทัศน์</td>
+                    <td class="font-medium">5 เครื่อง</td>
+                    <td class="font-medium">฿229,950</td>
+                    <td>
+                      <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i> 20%
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="product-brief">
+                        <div class="product-thumbnail"></div>
+                        <p class="product-name">เครื่องปรับอากาศ Daikin Inverter</p>
+                      </div>
+                    </td>
+                    <td>เครื่องปรับอากาศ</td>
+                    <td class="font-medium">3 เครื่อง</td>
+                    <td class="font-medium">฿62,970</td>
+                    <td>
+                      <div class="stat-change positive">
+                        <i class="fas fa-arrow-up"></i> 15%
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="product-brief">
+                        <div class="product-thumbnail"></div>
+                        <p class="product-name">เครื่องซักผ้า LG F2721HVRB</p>
+                      </div>
+                    </td>
+                    <td>เครื่องซักผ้า</td>
+                    <td class="font-medium">2 เครื่อง</td>
+                    <td class="font-medium">฿33,980</td>
+                    <td>
+                      <div class="stat-change negative">
+                        <i class="fas fa-arrow-down"></i> 5%
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="text-center">
+              <button class="btn-link">
+                ดูรายงานเพิ่มเติม
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Documents Tab -->
+        <div id="documents-tab" class="tab-content">
+          <div class="section-header">
+            <h1>เอกสาร</h1>
+            <p>ค้นหาและจัดการเอกสารทั้งหมด</p>
+            
+            <div class="search-form">
+              <div class="search-input">
+                <input type="text" placeholder="ค้นหาเอกสาร...">
+                <i class="fas fa-search"></i>
+              </div>
+              <div>
+                <select>
+                  <option>ทุกประเภท</option>
+                  <option>สเปคสินค้า</option>
+                  <option>คู่มือการใช้งาน</option>
+                  <option>โบรชัวร์</option>
+                  <option>เปรียบเทียบสินค้า</option>
+                </select>
+              </div>
+              <div>
+                <button class="btn btn-primary">
+                  ค้นหา
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>เอกสารล่าสุด</h2>
+            
+            <div class="document-grid">
+              <!-- Document Card 1 -->
+              <div class="document-card">
+                <div class="document-icon">
+                  <div class="pdf-icon">
+                    <i class="fas fa-file-pdf"></i>
+                  </div>
+                  <div>
+                    <h3>สเปค Samsung QN90C</h3>
+                    <p>อัปเดตล่าสุด: 10 เม.ย. 2568</p>
+                  </div>
+                </div>
+                <div class="document-actions">
+                  <span class="doc-type doc-type-spec">สเปคสินค้า</span>
+                  <div class="action-buttons">
+                    <button class="action-btn action-view" data-action="view">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="action-btn action-share" data-action="share">
+                      <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="action-btn action-download" data-action="download">
+                      <i class="fas fa-download"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Document Card 2 -->
+              <div class="document-card">
+                <div class="document-icon">
+                  <div class="pdf-icon">
+                    <i class="fas fa-file-pdf"></i>
+                  </div>
+                  <div>
+                    <h3>คู่มือการใช้งาน LG F2721HVRB</h3>
+                    <p>อัปเดตล่าสุด: 5 เม.ย. 2568</p>
+                  </div>
+                </div>
+                <div class="document-actions">
+                  <span class="doc-type doc-type-manual">คู่มือการใช้งาน</span>
+                  <div class="action-buttons">
+                    <button class="action-btn action-view" data-action="view">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="action-btn action-share" data-action="share">
+                      <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="action-btn action-download" data-action="download">
+                      <i class="fas fa-download"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Document Card 3 -->
+              <div class="document-card">
+                <div class="document-icon">
+                  <div class="pdf-icon">
+                    <i class="fas fa-file-pdf"></i>
+                  </div>
+                  <div>
+                    <h3>เปรียบเทียบแอร์ Daikin รุ่นต่างๆ</h3>
+                    <p>อัปเดตล่าสุด: 12 เม.ย. 2568</p>
+                  </div>
+                </div>
+                <div class="document-actions">
+                  <span class="doc-type doc-type-compare">เปรียบเทียบ</span>
+                  <div class="action-buttons">
+                    <button class="action-btn action-view" data-action="view">
+                      <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="action-btn action-share" data-action="share">
+                      <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="action-btn action-download" data-action="download">
+                      <i class="fas fa-download"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="load-more">
+              <button class="btn-link">
+                แสดงเอกสารทั้งหมด
+              </button>
+            </div>
+          </div>
+          
+          <div class="card">
+            <h2>เอกสารยอดนิยม</h2>
+            
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>ชื่อเอกสาร</th>
+                    <th>ประเภท</th>
+                    <th>ผู้สร้าง</th>
+                    <th>จำนวนดาวน์โหลด</th>
+                    <th>จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="document-brief">
+                        <div class="pdf-icon-small">
+                          <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <p class="document-name">โบรชัวร์ TV Samsung Series 2024</p>
+                      </div>
+                    </td>
+                    <td>โบรชัวร์</td>
+                    <td>ฝ่ายการตลาด</td>
+                    <td class="font-medium">120</td>
+                    <td>
+                      <div class="action-icons">
+                        <button class="action-btn action-view" data-action="view">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn action-share" data-action="share">
+                          <i class="fas fa-share-alt"></i>
+                        </button>
+                        <button class="action-btn action-download" data-action="download">
+                          <i class="fas fa-download"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="document-brief">
+                        <div class="pdf-icon-small">
+                          <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <p class="document-name">คู่มือการเลือกเครื่องปรับอากาศ</p>
+                      </div>
+                    </td>
+                    <td>คู่มือ</td>
+                    <td>ฝ่ายฝึกอบรม</td>
+                    <td class="font-medium">98</td>
+                    <td>
+                      <div class="action-icons">
+                        <button class="action-btn action-view" data-action="view">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn action-share" data-action="share">
+                          <i class="fas fa-share-alt"></i>
+                        </button>
+                        <button class="action-btn action-download" data-action="download">
+                          <i class="fas fa-download"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="document-brief">
+                        <div class="pdf-icon-small">
+                          <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <p class="document-name">ตารางราคาและโปรโมชัน เม.ย. 2568</p>
+                      </div>
+                    </td>
+                    <td>ราคา</td>
+                    <td>ฝ่ายขาย</td>
+                    <td class="font-medium">87</td>
+                    <td>
+                      <div class="action-icons">
+                        <button class="action-btn action-view" data-action="view">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn action-share" data-action="share">
+                          <i class="fas fa-share-alt"></i>
+                        </button>
+                        <button class="action-btn action-download" data-action="download">
+                          <i class="fas fa-download"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="text-center">
+              <button class="btn-link">
+                ดูรายงานการใช้งานเอกสาร
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Share Modal Template -->
+  <div id="share-modal-template" style="display: none;">
+    <div class="modal-header">
+      <h2>ส่งข้อมูลให้ลูกค้า</h2>
+      <button class="modal-close"><i class="fas fa-times"></i></button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="document-preview">
+        <div class="preview-header">
+          <div class="preview-thumbnail"></div>
+          <div>
+            <h3>Samsung QN90C 55" QLED 4K Smart TV</h3>
+            <p class="product-code">รหัสสินค้า: TV-SAM-QN90C-55</p>
+            <p class="price">฿45,990</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <h3 class="form-label">เลือกข้อมูลที่ต้องการส่ง</h3>
+        
+        <div class="form-grid">
+          <!-- Document Selection -->
+          <div>
+            <p class="form-label">เอกสาร</p>
+            <div class="checkbox-list">
+              <div class="checkbox-group">
+                <input type="checkbox" id="spec" class="checkbox-input" checked>
+                <label for="spec">สเปคสินค้า</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="manual" class="checkbox-input">
+                <label for="manual">คู่มือการใช้งาน</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="compare" class="checkbox-input" checked>
+                <label for="compare">เปรียบเทียบรุ่น</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="promo" class="checkbox-input">
+                <label for="promo">โปรโมชันประจำเดือน</label>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Price and Availability -->
+          <div>
+            <p class="form-label">ข้อมูลราคาและสต๊อก</p>
+            <div class="checkbox-list">
+              <div class="checkbox-group">
+                <input type="checkbox" id="price" class="checkbox-input" checked>
+                <label for="price">ราคา</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="stock" class="checkbox-input" checked>
+                <label for="stock">สถานะสต๊อกสินค้า</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="delivery" class="checkbox-input">
+                <label for="delivery">ข้อมูลการจัดส่ง</label>
+              </div>
+              <div class="checkbox-group">
+                <input type="checkbox" id="warranty" class="checkbox-input">
+                <label for="warranty">รายละเอียดการรับประกัน</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Custom Message -->
+      <div class="form-group">
+        <p class="form-label">ข้อความเพิ่มเติม</p>
+        <textarea placeholder="เพิ่มข้อความส่วนตัวถึงลูกค้า..."></textarea>
+      </div>
+      
+      <!-- Send To -->
+      <div class="form-group">
+        <p class="form-label">ส่งถึงลูกค้า</p>
+        
+        <div class="customer-select">
+          <div class="select-container">
+            <select>
+              <option value="">-- เลือกลูกค้า --</option>
+              <option value="1">คุณนภา วงศ์ประดิษฐ์ (089-123-4567)</option>
+              <option value="2">คุณสมศักดิ์ ใจดี (062-987-6543)</option>
+              <option value="3">คุณประภา เจริญพร (091-234-5678)</option>
+            </select>
+          </div>
+          <div class="or-divider">หรือ</div>
+          <div class="input-container">
+            <input type="text" placeholder="กรอกอีเมลหรือเบอร์โทรศัพท์">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Send Methods -->
+      <div class="form-group">
+        <p class="form-label">ช่องทางการส่ง</p>
+        
+        <div class="share-methods">
+          <button class="share-method share-line">
+            <i class="fab fa-line"></i> LINE
+          </button>
+          <button class="share-method share-email">
+            <i class="fas fa-envelope"></i> อีเมล
+          </button>
+          <button class="share-method share-sms">
+            <i class="fas fa-comment-alt"></i> SMS
+          </button>
+          <button class="share-method share-qr">
+            <i class="fas fa-qrcode"></i> สร้าง QR Code
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-footer">
+      <button class="btn btn-outline modal-close">
+        ยกเลิก
+      </button>
+      <button class="btn btn-primary" id="sendDocuments">
+        ส่งข้อมูล
+      </button>
+    </div>
+  </div>
+  
+  <script src="scripts.js"></script>
+</body>
+</html>
