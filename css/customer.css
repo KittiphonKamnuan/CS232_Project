@@ -1,0 +1,287 @@
+/**
+ * InfoHub 360 - Customer Styles
+ * Enhanced version using the improved common.css
+ */
+
+/* Import common styles */
+@import url('common.css');
+
+/* ========================================================================
+   CUSTOMER-SPECIFIC COMPONENTS
+   ======================================================================== */
+
+/**
+ * Customer Avatar
+ * 
+ * Displays customer initials in a styled circle
+ */
+.customer-avatar {
+  /* Use common avatar styles from common.css, just add specific colors */
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.customer-avatar.large {
+  width: 4rem;
+  height: 4rem;
+  font-size: 1.5rem;
+}
+
+/**
+ * Customer Info
+ * 
+ * Basic customer information display with name and contact
+ */
+.customer-info {
+  display: flex;
+  align-items: center;
+}
+
+.customer-name {
+  font-weight: var(--font-weight-medium);
+}
+
+.customer-phone {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.time, .model {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/**
+ * Customer Profile Header
+ * 
+ * Main section for customer profile page
+ */
+.customer-profile {
+  margin-bottom: var(--spacing-8);
+}
+
+.profile-header {
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-6);
+  align-items: flex-start;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin: var(--spacing-3) 0;
+}
+
+.contact-info p {
+  display: flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-1);
+}
+
+.contact-info i {
+  margin-right: var(--spacing-2);
+  color: var(--color-gray-500);
+}
+
+.customer-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+}
+
+.created-date {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.75rem;
+}
+
+/**
+ * Customer Details Grid
+ * 
+ * Grid layout for customer information cards
+ */
+.customer-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.detail-card {
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-3);
+  padding-bottom: var(--spacing-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card-header h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.card-header h3 i {
+  margin-right: var(--spacing-2);
+  color: var(--color-primary);
+}
+
+.card-body p {
+  margin-bottom: var(--spacing-2);
+  color: var(--color-text-secondary);
+}
+
+.card-body .empty-data {
+  color: var(--color-gray-400);
+  font-style: italic;
+}
+
+.empty-data-large {
+  text-align: center;
+  padding: var(--spacing-8) 0;
+  color: var(--color-gray-400);
+}
+
+.empty-data-large i {
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-2);
+}
+
+/**
+ * Contact History Timeline
+ * 
+ * Visual timeline for customer interactions
+ */
+.timeline {
+  position: relative;
+  padding-left: var(--spacing-8);
+}
+
+.timeline:before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 100%;
+  background-color: var(--color-border);
+  border-radius: 2px;
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: var(--spacing-6);
+}
+
+.timeline-point {
+  position: absolute;
+  left: calc(-1 * var(--spacing-8) - 3px);
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+}
+
+.timeline-point.success {
+  background-color: var(--color-success);
+}
+
+.timeline-point.warning {
+  background-color: var(--color-warning);
+}
+
+.timeline-point.info {
+  background-color: var(--color-info);
+}
+
+.timeline-point.danger {
+  background-color: var(--color-danger);
+}
+
+.timeline-content {
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-4);
+  box-shadow: var(--shadow-sm);
+}
+
+.timeline-content h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-1);
+}
+
+.timeline-date {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-2);
+}
+
+.timeline-user {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-2);
+  font-style: italic;
+}
+
+/**
+ * Customer Call Modal
+ * 
+ * Modal for calling customers
+ */
+.customer-call-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.call-buttons {
+  display: flex;
+  justify-content: center;
+  margin: var(--spacing-6) 0;
+}
+
+.btn-lg {
+  padding: var(--spacing-3) var(--spacing-8);
+  font-size: var(--font-size-lg);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profile-header {
+    padding: var(--spacing-4);
+    gap: var(--spacing-4);
+  }
+  
+  .customer-details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .timeline {
+    padding-left: var(--spacing-6);
+  }
+  
+  .timeline-point {
+    left: calc(-1 * var(--spacing-6) - 3px);
+  }
+}

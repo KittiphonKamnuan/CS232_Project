@@ -1,0 +1,443 @@
+/**
+ * InfoHub 360 - Profile Styles
+ * Enhanced version using the improved common.css
+ */
+
+/* Import common styles */
+@import url('common.css');
+
+/* ========================================================================
+   PROFILE CONTAINER
+   ======================================================================== */
+
+/**
+ * Profile Container
+ * 
+ * Main container for the profile page
+ */
+.profile-container {
+  padding: var(--spacing-4) 0;
+}
+
+/* ========================================================================
+   PROFILE HEADER
+   ======================================================================== */
+
+/**
+ * Profile Header
+ * 
+ * Header section with user information
+ */
+.profile-header {
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-6);
+}
+
+.profile-avatar {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-bold);
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.profile-avatar.large {
+  width: 6rem;
+  height: 6rem;
+  font-size: 2.5rem;
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-info h2 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-1);
+  color: var(--color-text);
+}
+
+.job-title {
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-4);
+}
+
+.profile-contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  margin-bottom: var(--spacing-4);
+}
+
+.profile-contact p {
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: 0;
+}
+
+.profile-contact p i {
+  margin-right: var(--spacing-2);
+  color: var(--color-gray-500);
+}
+
+.profile-actions {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+/* ========================================================================
+   PROFILE STATS
+   ======================================================================== */
+
+/**
+ * Profile Stats
+ * 
+ * Statistical overview of user activities
+ */
+.profile-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-4);
+  justify-content: space-around;
+  margin-bottom: var(--spacing-6);
+}
+
+.stat-item {
+  text-align: center;
+  background-color: var(--color-gray-50);
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-lg);
+  flex: 1;
+  min-width: 120px;
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-value {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-1);
+}
+
+.stat-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.2;
+}
+
+/* ========================================================================
+   PERFORMANCE CHART
+   ======================================================================== */
+
+/**
+ * Performance Chart
+ * 
+ * Container for performance visualization
+ */
+.performance-chart {
+  height: 300px;
+  margin-bottom: var(--spacing-6);
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-4);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================================================
+   PERFORMANCE METRICS
+   ======================================================================== */
+
+/**
+ * Performance Metrics
+ * 
+ * Grid of performance indicators
+ */
+.performance-metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.metric {
+  background-color: var(--color-gray-50);
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-lg);
+  transition: transform var(--transition-normal);
+}
+
+.metric:hover {
+  transform: translateY(-2px);
+}
+
+.metric h3 {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-2);
+  color: var(--color-text-secondary);
+}
+
+.progress-container {
+  height: 0.75rem;
+  background-color: var(--color-gray-200);
+  border-radius: var(--border-radius-full);
+  overflow: hidden;
+  margin-bottom: var(--spacing-2);
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: var(--border-radius-full);
+  color: white;
+  font-size: 0.625rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 1s ease-in-out;
+}
+
+.progress-bar.success {
+  background-color: var(--color-success);
+}
+
+.metric-detail {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* ========================================================================
+   ACTIVITY TIMELINE
+   ======================================================================== */
+
+/**
+ * Activity Timeline
+ * 
+ * Visualization of user activities
+ */
+.activity-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-6);
+  padding: var(--spacing-4) 0;
+  margin-bottom: var(--spacing-6);
+}
+
+.activity-item {
+  display: flex;
+  gap: var(--spacing-4);
+  position: relative;
+}
+
+.activity-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.activity-icon.sale {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.activity-icon.document {
+  background-color: var(--color-danger-light);
+  color: var(--color-danger);
+}
+
+.activity-icon.contact {
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+}
+
+.activity-icon.customer {
+  background-color: #fdf2f8;
+  color: #db2777;
+}
+
+.activity-icon.meeting {
+  background-color: var(--color-purple-light);
+  color: var(--color-purple);
+}
+
+.activity-content {
+  flex: 1;
+  background-color: var(--color-surface);
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-normal);
+}
+
+.activity-content:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.activity-content h3 {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-1);
+  color: var(--color-text);
+}
+
+.activity-content p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-2);
+}
+
+.activity-time {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--spacing-2);
+}
+
+/* ========================================================================
+   CUSTOMER SUMMARY
+   ======================================================================== */
+
+/**
+ * Customer Summary
+ * 
+ * Grid of customer statistics
+ */
+.customer-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+}
+
+.summary-card {
+  background-color: var(--color-gray-50);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-4);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.summary-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary-light);
+  color: var(--color-primary);
+  font-size: 1.25rem;
+}
+
+.summary-icon.warning {
+  background-color: var(--color-warning-light);
+  color: var(--color-warning);
+}
+
+.summary-icon.success {
+  background-color: var(--color-success-light);
+  color: var(--color-success);
+}
+
+.summary-icon.info {
+  background-color: var(--color-purple-light);
+  color: var(--color-purple);
+}
+
+.summary-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.summary-content h3 {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-1);
+  color: var(--color-text);
+}
+
+.summary-content p {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-bottom: 0;
+}
+
+/* ========================================================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================================================== */
+
+@media (min-width: 768px) {
+  .profile-header {
+    grid-template-columns: auto 1fr auto;
+  }
+  
+  .performance-metrics {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .customer-summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .profile-header {
+    padding: var(--spacing-4);
+    gap: var(--spacing-4);
+  }
+  
+  .profile-stats {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+  
+  .stat-item {
+    flex: none;
+    width: 100%;
+  }
+  
+  .activity-timeline {
+    gap: var(--spacing-4);
+  }
+  
+  .summary-card {
+    padding: var(--spacing-3);
+  }
+  
+  .summary-content h3 {
+    font-size: var(--font-size-xl);
+  }
+}

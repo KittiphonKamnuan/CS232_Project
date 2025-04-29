@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ติดตามการขาย - InfoHub 360</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/sales.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+  <div class="flex flex-col h-screen">
+    <!-- Top Navigation -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="logo">
+          <i class="fas fa-cube"></i>
+          <span>InfoHub 360</span>
+        </div>
+        <div class="user-section">
+          <span class="user-greeting">สวัสดี, คุณสมชาย (พนักงานขาย)</span>
+          <div class="notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-count">3</span>
+            <div class="notification-dropdown">
+              <div class="notification-header">
+                <p>การแจ้งเตือน</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">ตรวจสอบลูกค้า: คุณนภา</p>
+                <p class="notification-desc">ส่งใบเสนอราคาแล้ว 2 วัน</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">สต๊อกใกล้หมด: TV Samsung QN90C</p>
+                <p class="notification-desc">เหลือเพียง 2 เครื่อง</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">โปรโมชันใหม่: เครื่องใช้ไฟฟ้า</p>
+                <p class="notification-desc">เริ่ม 15 เม.ย. - 30 เม.ย. 2568</p>
+              </div>
+            </div>
+          </div>
+          <div class="user-avatar">
+            <span>ส</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-menu">
+          <a href="index.html" class="menu-item" data-tab="search">
+            <i class="fas fa-search"></i>
+            <span>ค้นหาสินค้า</span>
+          </a>
+          <a href="customer-list.html" class="menu-item" data-tab="customers">
+            <i class="fas fa-users"></i>
+            <span>ลูกค้าของฉัน</span>
+          </a>
+          <a href="sales-report.html" class="menu-item active" data-tab="sales">
+            <i class="fas fa-chart-line"></i>
+            <span>ติดตามการขาย</span>
+          </a>
+          <a href="document-viewer.html" class="menu-item" data-tab="documents">
+            <i class="fas fa-file-pdf"></i>
+            <span>เอกสาร</span>
+          </a>
+        </div>
+        <div class="sidebar-footer">
+          <a href="settings.html" class="menu-item">
+            <i class="fas fa-cog"></i>
+            <span>ตั้งค่า</span>
+          </a>
+          <a href="login.html" class="menu-item">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>ออกจากระบบ</span>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Content Area -->
+      <div class="content">
+        <div class="section-header">
+          <h1>ติดตามการขาย</h1>
+          <p>วิเคราะห์และติดตามประสิทธิภาพการขาย</p>
+          
+          <div class="date-range-form">
+            <div class="date-range">
+              <label for="start-date">เริ่มวันที่</label>
+              <input type="date" id="start-date" class="date-input">
+            </div>
+            <div class="date-range">
+              <label for="end-date">ถึงวันที่</label>
+              <input type="date" id="end-date" class="date-input">
+            </div>
+            <div>
+              <button class="btn btn-primary" id="apply-date-range">
+                <i class="fas fa-filter"></i> กรอง
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="loading-overlay">
+          <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+          </div>
+        </div>
+        
+        <!-- Error Message -->
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        
+        <!-- Sales Overview Cards -->
+        <div class="stats-cards" id="sales-overview">
+          <!-- จะเติมข้อมูลด้วย JavaScript (sales-controller.js) -->
+        </div>
+        
+        <!-- Sales Pipeline -->
+        <div class="card">
+          <h2>กระบวนการขาย (Sales Pipeline)</h2>
+          
+          <div class="pipeline-container" id="sales-pipeline">
+            <!-- จะเติมข้อมูลด้วย JavaScript (sales-controller.js) -->
+          </div>
+        </div>
+        
+        <!-- Monthly Sales Chart -->
+        <div class="card">
+          <h2>ยอดขายรายเดือน</h2>
+          <div class="chart-container">
+            <canvas id="monthly-sales-chart"></canvas>
+          </div>
+        </div>
+        
+        <!-- Top Products -->
+        <div class="card">
+          <h2>สินค้าขายดีประจำเดือน</h2>
+          
+          <div class="table-container" id="top-products">
+            <!-- จะเติมข้อมูลด้วย JavaScript (sales-controller.js) -->
+          </div>
+          
+          <div class="text-center">
+            <button class="btn-link" id="view-more-reports">
+              ดูรายงานเพิ่มเติม
+            </button>
+          </div>
+        </div>
+        
+        <!-- Sales Activities -->
+        <div class="card">
+          <h2>กิจกรรมการขายล่าสุด</h2>
+          
+          <div class="timeline" id="sales-activities">
+            <!-- จะเติมข้อมูลด้วย JavaScript (sales-controller.js) -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Load Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+  <script type="module" src="js/controllers/sales-controller.js"></script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ลูกค้าของฉัน - InfoHub 360</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/customer.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gray-100">
+  <div class="flex flex-col h-screen">
+    <!-- Top Navigation -->
+    <nav class="navbar">
+      <div class="container">
+        <div class="logo">
+          <i class="fas fa-cube"></i>
+          <span>InfoHub 360</span>
+        </div>
+        <div class="user-section">
+          <span class="user-greeting">สวัสดี, คุณสมชาย (พนักงานขาย)</span>
+          <div class="notifications">
+            <i class="fas fa-bell"></i>
+            <span class="notification-count">3</span>
+            <div class="notification-dropdown">
+              <div class="notification-header">
+                <p>การแจ้งเตือน</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">ตรวจสอบลูกค้า: คุณนภา</p>
+                <p class="notification-desc">ส่งใบเสนอราคาแล้ว 2 วัน</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">สต๊อกใกล้หมด: TV Samsung QN90C</p>
+                <p class="notification-desc">เหลือเพียง 2 เครื่อง</p>
+              </div>
+              <div class="notification-item">
+                <p class="notification-title">โปรโมชันใหม่: เครื่องใช้ไฟฟ้า</p>
+                <p class="notification-desc">เริ่ม 15 เม.ย. - 30 เม.ย. 2568</p>
+              </div>
+            </div>
+          </div>
+          <div class="user-avatar">
+            <span>ส</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="main-content">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-menu">
+          <a href="index.html" class="menu-item" data-tab="search">
+            <i class="fas fa-search"></i>
+            <span>ค้นหาสินค้า</span>
+          </a>
+          <a href="customer-list.html" class="menu-item active" data-tab="customers">
+            <i class="fas fa-users"></i>
+            <span>ลูกค้าของฉัน</span>
+          </a>
+          <a href="sales-report.html" class="menu-item" data-tab="sales">
+            <i class="fas fa-chart-line"></i>
+            <span>ติดตามการขาย</span>
+          </a>
+          <a href="document-viewer.html" class="menu-item" data-tab="documents">
+            <i class="fas fa-file-pdf"></i>
+            <span>เอกสาร</span>
+          </a>
+        </div>
+        <div class="sidebar-footer">
+          <a href="settings.html" class="menu-item">
+            <i class="fas fa-cog"></i>
+            <span>ตั้งค่า</span>
+          </a>
+          <a href="login.html" class="menu-item">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>ออกจากระบบ</span>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Content Area -->
+      <div class="content">
+        <div class="section-header">
+          <h1>ลูกค้าของฉัน</h1>
+          <p>จัดการและติดตามข้อมูลลูกค้า</p>
+          
+          <div class="search-form" id="search-form">
+            <div class="search-input">
+              <input type="text" placeholder="ค้นหาลูกค้า..." id="keyword">
+              <i class="fas fa-search"></i>
+            </div>
+            <div>
+              <select id="status-select">
+                <option value="">ทั้งหมด</option>
+                <option value="สอบถามข้อมูล">สอบถามข้อมูล</option>
+                <option value="ลูกค้าสนใจ">ลูกค้าสนใจ</option>
+                <option value="ส่งใบเสนอราคา">รอเสนอราคา</option>
+                <option value="ต่อรองราคา">รอตัดสินใจ</option>
+                <option value="ยืนยันการสั่งซื้อ">ยืนยันการสั่งซื้อ</option>
+                <option value="ส่งมอบสินค้า">ส่งมอบสินค้า</option>
+                <option value="บริการหลังการขาย">บริการหลังการขาย</option>
+              </select>
+            </div>
+            <div>
+              <button type="submit" class="btn btn-primary" id="search-button">
+                ค้นหา
+              </button>
+              <button type="button" class="btn btn-outline" id="clear-button">
+                ล้างการค้นหา
+              </button>
+            </div>
+            <div>
+              <button class="btn btn-success" id="add-customer-button">
+                <i class="fas fa-plus"></i> เพิ่มลูกค้า
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loading-indicator" class="loading-overlay">
+          <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+          </div>
+        </div>
+        
+        <!-- Error Message -->
+        <div id="error-message" class="error-message" style="display: none;"></div>
+        
+        <div class="card">
+          <h2>รายชื่อลูกค้า</h2>
+          
+          <div class="table-container">
+            <div id="customer-list">
+              <!-- จะเติมข้อมูลด้วย JavaScript (customer-controller.js) -->
+            </div>
+          </div>
+          
+          <div id="pagination-container">
+            <!-- จะเติมข้อมูลด้วย JavaScript (customer-controller.js) -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Load Scripts -->
+  <script type="module" src="js/controllers/customer-controller.js"></script>
+</body>
+</html>
