@@ -1,10 +1,11 @@
 /**
  * sale-controller.js
  * Controller สำหรับจัดการข้อมูลรายละเอียดการขาย
- * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
+ * ปรับปรุงให้ใช้ dataService แทนการเรียก API จริง
  */
 
-import mockupService from '../services/mockup-service.js';
+import dataService from '../services/data-service.js';
+import documentService from '../services/document-service.js';
 
 class SaleController {
   constructor() {
@@ -162,7 +163,7 @@ class SaleController {
   async loadProductForNewSale(productId) {
     try {
       // ดึงข้อมูลสินค้าจาก Mockup Service
-      const product = await mockupService.getProductById(productId);
+      const product = await dataService.getProductById(productId);
       
       // เก็บข้อมูลสินค้า
       this.productData = product;
@@ -178,7 +179,7 @@ class SaleController {
   async loadCustomerForNewSale(customerId) {
     try {
       // ดึงข้อมูลลูกค้าจาก Mockup Service
-      const customer = await mockupService.getCustomerById(customerId);
+      const customer = await dataService.getCustomerById(customerId);
       
       // เก็บข้อมูลลูกค้า
       this.customerData = customer;
@@ -197,7 +198,7 @@ class SaleController {
       this.hideError();
       
       // ดึงข้อมูลการขายจาก Mockup Service
-      this.saleData = await mockupService.getSaleById(saleId);
+      this.saleData = await dataService.getSaleById(saleId);
       
       // แสดงข้อมูลรายละเอียดการขาย
       this.renderSaleDetails();
@@ -337,7 +338,7 @@ class SaleController {
       this.saleData.documents.forEach(async (documentId) => {
         try {
           // ดึงข้อมูลเอกสารจาก Mockup Service
-          const document = await mockupService.getDocumentById(documentId);
+          const document = await dataService.getDocumentById(documentId);
           
           // แปลงวันที่เป็นรูปแบบที่อ่านง่าย
           const docDate = new Date(document.date);
@@ -1014,7 +1015,7 @@ class SaleController {
     
     try {
       // ดึงข้อมูลลูกค้าจาก Mockup Service
-      const customer = await mockupService.getCustomerById(customerId);
+      const customer = await dataService.getCustomerById(customerId);
       
       // แสดงข้อมูลลูกค้า
       customerName.textContent = customer.name;
@@ -1325,7 +1326,7 @@ class SaleController {
   async handleViewDocument(documentId) {
     try {
       // ดึงข้อมูลเอกสารจาก Mockup Service
-      const document = await mockupService.getDocumentById(documentId);
+      const document = await dataService.getDocumentById(documentId);
       
       // เปิดเอกสารในหน้าใหม่
       window.open(`document-viewer.html?document=${documentId}`, '_blank');
@@ -1342,7 +1343,7 @@ class SaleController {
   async handleDownloadDocument(documentId) {
     try {
       // ดึงข้อมูลเอกสารจาก Mockup Service
-      const document = await mockupService.getDocumentById(documentId);
+      const document = await dataService.getDocumentById(documentId);
       
       alert(`เริ่มดาวน์โหลดเอกสาร: ${document.title}`);
     } catch (error) {

@@ -474,3 +474,5 @@ document.addEventListener('DOMContentLoaded', () => {
   //   shareModal.open(productId);
   // }
 });
+
+export default ShareModal;

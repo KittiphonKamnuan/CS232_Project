@@ -4,7 +4,8 @@
  * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
  */
 
-import mockupService from '../services/mockup-service.js';
+import dataService from '../services/data-service.js';
+import documentService from '../services/document-service.js';
 
 class ProfileController {
   constructor() {

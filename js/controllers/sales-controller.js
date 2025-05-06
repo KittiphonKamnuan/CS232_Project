@@ -1,10 +1,11 @@
 /**
  * sales-controller.js
  * Controller สำหรับจัดการข้อมูลการขาย
- * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
+ * ปรับปรุงให้ใช้ dataService แทนการเรียก API จริง
  */
 
-import mockupService from '../services/mockup-service.js';
+import dataService from '../services/data-service.js';
+import documentService from '../services/document-service.js';
 
 class SalesController {
   constructor() {
@@ -134,10 +135,10 @@ class SalesController {
       this.hideError();
       
       // ดึงข้อมูลสถิติจาก Mockup Service
-      this.statistics = await mockupService.getStatistics();
+      this.statistics = await dataService.getStatistics();
       
       // ดึงข้อมูลการขายตามช่วงวันที่
-      const salesData = await mockupService.getSales(this.filters);
+      const salesData = await dataService.getSales(this.filters);
       
       // แสดงข้อมูล Sales Overview
       this.renderSalesOverview();

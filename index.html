@@ -160,9 +160,7 @@
     </div>
   </div>
   
-  <div class="modal-backdrop" id="share-backdrop" style="display: flex;">
-    <div id="share-modal-template">
-      <!-- Share Modal Template -->
+  <!-- Share Modal Template -->
   <div id="share-modal-template" style="display: none;">
     <div class="modal-header">
       <h2>ส่งข้อมูลให้ลูกค้า</h2>
@@ -289,12 +287,12 @@
       </button>
     </div>
   </div>
-    </div>
-  </div>
   
   <!-- นำเข้าไฟล์ JS ข้อมูล mockup -->
-  <script type="module" src="js/services/mockup-data.js"></script>
-  <script type="module" src="js/services/mockup-service.js"></script>
+  <script type="module" src="js/services/data-service.js"></script>
+  <script type="module" src="js/services/api-service.js"></script>
+  <script type="module" src="js/config/aws-config.js"></script>
+
   
   <!-- JavaScript หลัก -->
   <script src="js/scripts.js"></script>
@@ -448,11 +446,12 @@
           if (loadingIndicator) loadingIndicator.style.display = 'flex';
           
           // นำเข้า mockup service ด้วย dynamic import
-          const module = await import('./js/services/mockup-service.js');
-          const mockupService = module.default;
+          const module = await import('./js/services/data-service.js');
+          const dataService = module.default;
+
           
           // ดึงข้อมูลสินค้า
-          const products = await mockupService.getProducts();
+          const products = await dataService.getProducts();
           
           // แสดงรายการสินค้า
           renderProductList(products);
@@ -472,7 +471,7 @@
               const category = document.getElementById('category-filter')?.value || '';
               
               // ดึงข้อมูลสินค้าตามการค้นหา
-              const filteredProducts = await mockupService.getProducts({
+              const filteredProducts = await dataService.getProducts({
                 search: keyword,
                 category: category
               });

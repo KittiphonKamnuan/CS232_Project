@@ -4,7 +4,8 @@
  * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
  */
 
-import mockupService from '../services/mockup-service.js';
+import dataService from '../services/data-service.js';
+import documentService from '../services/document-service.js';
 
 class CustomerController {
   constructor() {
@@ -147,7 +148,7 @@ class CustomerController {
       this.hideError();
       
       // ดึงข้อมูลลูกค้าจาก Mockup Service
-      const customers = await mockupService.getCustomers(this.filters);
+      const customers = await dataService.getCustomers(this.filters);
       
       // คำนวณจำนวนหน้าทั้งหมด
       this.totalPages = Math.ceil(customers.length / this.itemsPerPage);

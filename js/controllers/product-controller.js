@@ -1,10 +1,11 @@
 /**
  * product-controller.js
  * Controller สำหรับจัดการข้อมูลสินค้า
- * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
+ * ปรับปรุงให้ใช้ dataService แทน dataService
  */
 
-import mockupService from '../services/mockup-service.js';
+import dataService from '../services/data-service.js';
+import documentService from '../services/document-service.js';
 
 class ProductController {
   constructor() {
@@ -108,8 +109,8 @@ class ProductController {
         throw new Error('ไม่พบรหัสสินค้า');
       }
       
-      // ดึงข้อมูลสินค้าจาก Mockup Service
-      const product = await mockupService.getProductById(productId);
+      // เปลี่ยนจาก dataService เป็น dataService
+      const product = await dataService.getProductById(productId);
       
       // แสดงข้อมูลสินค้า
       this.renderProductDetails(product);
@@ -140,8 +141,8 @@ class ProductController {
       this.showLoading();
       this.hideError();
       
-      // ดึงข้อมูลสินค้าจาก Mockup Service
-      const products = await mockupService.getProducts();
+      // เปลี่ยนจาก dataService เป็น dataService
+      const products = await dataService.getProducts();
       
       // แสดงรายการสินค้า
       this.renderProductList(products);
@@ -157,8 +158,17 @@ class ProductController {
    * แสดงข้อมูลรายละเอียดสินค้า
    * @param {Object} product - ข้อมูลสินค้า
    */
-  renderProductDetails(product) {
+  async renderProductDetails(product) {
     if (!this.productDetailsContainer) return;
+    
+    // ดึงเอกสารที่เกี่ยวข้องกับสินค้าจาก documentService
+    let relatedDocuments = [];
+    try {
+      relatedDocuments = await documentService.getDocumentsByProduct(product.id);
+    } catch (error) {
+      console.error('Error loading related documents:', error);
+      // ไม่ต้องแสดงข้อผิดพลาด เพราะเป็นข้อมูลเสริม
+    }
     
     // สร้าง HTML สำหรับแสดงรายละเอียดสินค้า
     const html = `
@@ -218,15 +228,7 @@ class ProductController {
             <div class="product-documents">
               <h3>เอกสารที่เกี่ยวข้อง</h3>
               <div class="document-links">
-                <a href="document-viewer.html?type=spec&id=${product.id}" class="document-link">
-                  <i class="fas fa-file-pdf"></i> สเปคสินค้า
-                </a>
-                <a href="document-viewer.html?type=manual&id=${product.id}" class="document-link">
-                  <i class="fas fa-file-pdf"></i> คู่มือการใช้งาน
-                </a>
-                <a href="document-viewer.html?type=compare&id=${product.id}" class="document-link">
-                  <i class="fas fa-file-pdf"></i> เปรียบเทียบรุ่น
-                </a>
+                ${this.renderDocumentLinks(relatedDocuments, product.id)}
               </div>
             </div>
           </div>
@@ -266,6 +268,91 @@ class ProductController {
     if (openShareModalBtn) {
       openShareModalBtn.addEventListener('click', this.handleOpenShareModal.bind(this));
     }
+  }
+  
+  /**
+   * สร้างลิงก์เอกสารที่เกี่ยวข้อง
+   * @param {Array} documents - รายการเอกสาร
+   * @param {string} productId - รหัสสินค้า
+   * @returns {string} - HTML สำหรับลิงก์เอกสาร
+   */
+  renderDocumentLinks(documents, productId) {
+    if (!documents || documents.length === 0) {
+      return `
+        <a href="document-viewer.html?type=spec&id=${productId}" class="document-link">
+          <i class="fas fa-file-pdf"></i> สเปคสินค้า
+        </a>
+        <a href="document-viewer.html?type=manual&id=${productId}" class="document-link">
+          <i class="fas fa-file-pdf"></i> คู่มือการใช้งาน
+        </a>
+        <a href="document-viewer.html?type=compare&id=${productId}" class="document-link">
+          <i class="fas fa-file-pdf"></i> เปรียบเทียบรุ่น
+        </a>
+      `;
+    }
+    
+    // สร้าง HTML สำหรับเอกสารแต่ละประเภท
+    let html = '';
+    
+    // กรองเอกสารตามประเภท
+    const specDocs = documents.filter(doc => doc.type === 'สเปคสินค้า');
+    const manualDocs = documents.filter(doc => doc.type === 'คู่มือการใช้งาน');
+    const compareDocs = documents.filter(doc => doc.type === 'เปรียบเทียบสินค้า');
+    const brochureDocs = documents.filter(doc => doc.type === 'โบรชัวร์');
+    
+    // เพิ่มลิงก์เอกสารตามที่มี
+    if (specDocs.length > 0) {
+      html += `
+        <a href="document-viewer.html?document=${specDocs[0].id}" class="document-link">
+          <i class="fas fa-file-pdf"></i> สเปคสินค้า
+        </a>
+      `;
+    } else {
+      html += `
+        <a href="document-viewer.html?type=spec&id=${productId}" class="document-link">
+          <i class="fas fa-file-pdf"></i> สเปคสินค้า
+        </a>
+      `;
+    }
+    
+    if (manualDocs.length > 0) {
+      html += `
+        <a href="document-viewer.html?document=${manualDocs[0].id}" class="document-link">
+          <i class="fas fa-file-pdf"></i> คู่มือการใช้งาน
+        </a>
+      `;
+    } else {
+      html += `
+        <a href="document-viewer.html?type=manual&id=${productId}" class="document-link">
+          <i class="fas fa-file-pdf"></i> คู่มือการใช้งาน
+        </a>
+      `;
+    }
+    
+    if (compareDocs.length > 0) {
+      html += `
+        <a href="document-viewer.html?document=${compareDocs[0].id}" class="document-link">
+          <i class="fas fa-file-pdf"></i> เปรียบเทียบรุ่น
+        </a>
+      `;
+    } else {
+      html += `
+        <a href="document-viewer.html?type=compare&id=${productId}" class="document-link">
+          <i class="fas fa-file-pdf"></i> เปรียบเทียบรุ่น
+        </a>
+      `;
+    }
+    
+    // เพิ่มโบรชัวร์ถ้ามี
+    if (brochureDocs.length > 0) {
+      html += `
+        <a href="document-viewer.html?document=${brochureDocs[0].id}" class="document-link">
+          <i class="fas fa-file-pdf"></i> โบรชัวร์
+        </a>
+      `;
+    }
+    
+    return html;
   }
   
   /**

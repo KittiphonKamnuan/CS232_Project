@@ -4,7 +4,8 @@
  * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
  */
 
-import mockupService from '../services/mockup-service.js';
+import dataService from '../services/data-service.js';
+import documentService from '../services/document-service.js';
 
 class DocumentController {
   constructor() {
@@ -241,7 +242,7 @@ class DocumentController {
       }
       
       // ดึงข้อมูลเอกสารจาก Mockup Service
-      const documents = await mockupService.getDocuments(searchFilters);
+      const documents = await dataService.getDocuments(searchFilters);
       
       // คำนวณจำนวนหน้าทั้งหมด
       this.totalPages = Math.ceil(documents.length / this.itemsPerPage);
@@ -597,7 +598,7 @@ class DocumentController {
       this.showLoading();
       
       // ดึงข้อมูลเอกสารจาก Mockup Service
-      const document = await mockupService.getDocumentById(documentId);
+      const document = await dataService.getDocumentById(documentId);
       
       // ตั้งค่าตัวอย่างเอกสาร
       if (this.previewDocumentTitle) {
@@ -748,7 +749,7 @@ class DocumentController {
       this.showLoading();
       
       // ดึงข้อมูลเอกสารจาก Mockup Service
-      const document = await mockupService.getDocumentById(documentId);
+      const document = await dataService.getDocumentById(documentId);
       
       // จำลองการดาวน์โหลดเอกสาร
       alert(`เริ่มดาวน์โหลดเอกสาร: ${document.title}`);
@@ -767,7 +768,7 @@ class DocumentController {
   async handleShareDocument(documentId) {
     try {
       // ดึงข้อมูลเอกสารจาก Mockup Service
-      const document = await mockupService.getDocumentById(documentId);
+      const document = await dataService.getDocumentById(documentId);
       
       // สร้าง Modal element
       const modal = document.createElement('div');
