@@ -333,10 +333,6 @@ input:checked + .slider:before {
   background-color: white;
 }
 
-.dark-theme {
-  background-color: var(--color-gray-800);
-}
-
 .system-theme {
   background: linear-gradient(to right, white 50%, var(--color-gray-800) 50%);
 }

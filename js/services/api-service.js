@@ -1,295 +1,476 @@
 /**
- * InfoHub 360 - API Service
+ * InfoHub 360 - Share Modal Component
  * 
- * บริการเชื่อมต่อกับ API Gateway ที่เรียกใช้ AWS Lambda Functions
- * ใช้สำหรับการดึงข้อมูลและส่งข้อมูลไปยังระบบหลังบ้านอย่างปลอดภัย
+ * คอมโพเนนต์สำหรับการแชร์ข้อมูลสินค้าให้กับลูกค้าผ่านช่องทางต่างๆ
+ * รองรับการดึงข้อมูลสินค้าจาก API และการส่งข้อมูลไปยังช่องทางที่กำหนด
  */
 
-import { AWS_REGION } from './aws-config.js';
-
-class ApiService {
+class ShareModal {
   constructor() {
-    // ตั้งค่า API Endpoints
-    this.API_URL = 'https://api.example.com/infohub360/v1'; // เปลี่ยนเป็น URL ของ API Gateway ของคุณ
-    this.API_KEY = ''; // API Key (ถ้ามี)
+    // ค่าเริ่มต้น
+    this.modalElement = null;
+    this.productData = null;
+    this.selectedMethod = null;
+    this.API_ENDPOINT = 'https://s9ohxtt51a.execute-api.us-east-1.amazonaws.com/GetProducts';
     
-    // ตรวจสอบว่ามี Token หรือไม่
-    this.authToken = sessionStorage.getItem('infohub_auth');
+    // binding methods
+    this.open = this.open.bind(this);
+    this.close = this.close.bind(this);
+    this.handleSend = this.handleSend.bind(this);
   }
   
   /**
-   * ตั้งค่า Auth Token
-   * @param {string} token - JWT Token สำหรับการยืนยันตัวตน
+   * เปิด Share Modal และโหลดข้อมูลสินค้า
+   * @param {string} productId - รหัสสินค้าที่ต้องการแชร์
    */
-  setAuthToken(token) {
-    this.authToken = token;
-    sessionStorage.setItem('infohub_auth', token);
-  }
-  
-  /**
-   * ล้าง Auth Token
-   */
-  clearAuthToken() {
-    this.authToken = null;
-    sessionStorage.removeItem('infohub_auth');
-  }
-  
-  /**
-   * สร้าง Headers สำหรับ request
-   * @param {boolean} includeAuth - ใส่ Auth Token หรือไม่
-   * @returns {Headers} - Headers object
-   */
-  _createHeaders(includeAuth = true) {
-    const headers = new Headers({
-      'Content-Type': 'application/json',
-      'Accept': 'application/json'
-    });
-    
-    // เพิ่ม API Key (ถ้ามี)
-    if (this.API_KEY) {
-      headers.append('x-api-key', this.API_KEY);
-    }
-    
-    // เพิ่ม Auth Token (ถ้ามี)
-    if (includeAuth && this.authToken) {
-      headers.append('Authorization', `Bearer ${this.authToken}`);
-    }
-    
-    return headers;
-  }
-  
-  /**
-   * ส่ง Request ไปยัง API
-   * @param {string} endpoint - Endpoint ที่ต้องการเรียก (ไม่รวม Base URL)
-   * @param {string} method - HTTP Method (GET, POST, PUT, DELETE)
-   * @param {Object} data - ข้อมูลที่ต้องการส่ง (สำหรับ POST และ PUT)
-   * @param {boolean} requiresAuth - ต้องการ Auth Token หรือไม่
-   * @returns {Promise} - Promise ที่ resolve เป็น response data
-   */
-  async _makeRequest(endpoint, method = 'GET', data = null, requiresAuth = true) {
-    const url = `${this.API_URL}/${endpoint}`;
-    const headers = this._createHeaders(requiresAuth);
-    
-    const options = {
-      method: method,
-      headers: headers,
-      mode: 'cors'
-    };
-    
-    // เพิ่ม body สำหรับ POST, PUT
-    if (data && (method === 'POST' || method === 'PUT')) {
-      options.body = JSON.stringify(data);
-    }
-    
+  async open(productId) {
     try {
-      const response = await fetch(url, options);
+      // แสดง loading indicator
+      this.showLoading();
       
-      // ตรวจสอบสถานะ response
-      if (!response.ok) {
-        // ถ้าเป็น 401 Unauthorized, ให้ล้าง token และนำทางไปหน้า login
-        if (response.status === 401) {
-          this.clearAuthToken();
-          window.location.href = 'login.html';
-          throw new Error('การยืนยันตัวตนหมดอายุ กรุณาเข้าสู่ระบบใหม่');
-        }
-        
-        // ข้อผิดพลาดอื่นๆ
-        const errorData = await response.json();
-        throw new Error(errorData.message || `เกิดข้อผิดพลาด: ${response.status}`);
+      // ดึงข้อมูลสินค้าจาก API จริง
+      this.productData = await this.fetchProductData(productId);
+      
+      // ซ่อน loading indicator
+      this.hideLoading();
+      
+      if (!this.productData) {
+        this.showToast('ไม่พบข้อมูลสินค้า', 'error');
+        return;
       }
       
-      // ส่งคืนข้อมูล
-      return await response.json();
+      // สร้าง Modal
+      this.createModal();
+      
+      // อัพเดทข้อมูลสินค้าใน Modal
+      this.updateProductInfo();
+      
+      // ตั้งค่า Event Listeners
+      this.setupEventListeners();
+      
     } catch (error) {
-      console.error('API Request Error:', error);
+      console.error('เกิดข้อผิดพลาดในการโหลดข้อมูล:', error);
+      this.hideLoading();
+      this.showToast('ไม่สามารถโหลดข้อมูลสินค้าได้ โปรดลองใหม่อีกครั้ง', 'error');
+    }
+  }
+  
+  /**
+   * ดึงข้อมูลสินค้าจาก API จริง
+   * @param {string} productId - รหัสสินค้า
+   * @returns {Object} - ข้อมูลสินค้า
+   */
+  async fetchProductData(productId) {
+    try {
+      // เรียกใช้ API จริงที่ให้มา
+      const url = `${this.API_ENDPOINT}?product_id=${encodeURIComponent(productId)}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('API Response:', data);
+      return data;
+    } catch (error) {
+      console.error('เกิดข้อผิดพลาดในการดึงข้อมูลจาก API:', error);
       throw error;
     }
   }
   
   /**
-   * API Endpoints สำหรับผลิตภัณฑ์
+   * สร้าง Loading Indicator
    */
+  showLoading() {
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'share-modal-loading';
+    loadingDiv.className = 'modal-backdrop';
+    loadingDiv.innerHTML = `
+      <div class="loading-container">
+        <div class="loading-spinner">
+          <i class="fas fa-spinner fa-spin"></i>
+        </div>
+        <p>กำลังโหลดข้อมูลสินค้า...</p>
+      </div>
+    `;
+    document.body.appendChild(loadingDiv);
+  }
   
-  // ดึงรายการสินค้าทั้งหมดหรือค้นหา
-  async getProducts(searchParams = {}) {
-    let queryString = '';
-    
-    // สร้าง query string จาก parameters
-    if (Object.keys(searchParams).length > 0) {
-      queryString = '?' + new URLSearchParams(searchParams).toString();
+  /**
+   * ซ่อน Loading Indicator
+   */
+  hideLoading() {
+    const loadingDiv = document.getElementById('share-modal-loading');
+    if (loadingDiv) {
+      document.body.removeChild(loadingDiv);
+    }
+  }
+  
+  /**
+   * สร้าง Modal จาก Template
+   */
+  createModal() {
+    // ค้นหา Modal Template
+    const modalTemplate = document.getElementById('share-modal-template');
+    if (!modalTemplate) {
+      console.error('ไม่พบ Share Modal Template');
+      return;
     }
     
-    return await this._makeRequest(`products${queryString}`);
-  }
-  
-  // ดึงข้อมูลสินค้าตาม ID
-  async getProductById(productId) {
-    return await this._makeRequest(`products/${productId}`);
-  }
-  
-  // เพิ่มสินค้าใหม่
-  async createProduct(productData) {
-    return await this._makeRequest('products', 'POST', productData);
-  }
-  
-  // อัปเดตข้อมูลสินค้า
-  async updateProduct(productId, productData) {
-    return await this._makeRequest(`products/${productId}`, 'PUT', productData);
-  }
-  
-  // ลบสินค้า
-  async deleteProduct(productId) {
-    return await this._makeRequest(`products/${productId}`, 'DELETE');
+    // สร้าง Modal element
+    this.modalElement = document.createElement('div');
+    this.modalElement.id = 'share-modal';
+    this.modalElement.className = 'modal-backdrop';
+    this.modalElement.style.display = 'flex';
+    this.modalElement.innerHTML = modalTemplate.innerHTML;
+    
+    // เพิ่ม Modal ไปยัง body
+    document.body.appendChild(this.modalElement);
   }
   
   /**
-   * API Endpoints สำหรับลูกค้า
+   * อัพเดทข้อมูลสินค้าใน Modal
    */
-  
-  // ดึงรายการลูกค้าทั้งหมดหรือค้นหา
-  async getCustomers(searchParams = {}) {
-    let queryString = '';
+  updateProductInfo() {
+    if (!this.modalElement || !this.productData) return;
     
-    if (Object.keys(searchParams).length > 0) {
-      queryString = '?' + new URLSearchParams(searchParams).toString();
+    // อัพเดทชื่อสินค้า
+    const productNameElement = this.modalElement.querySelector('#product-name');
+    if (productNameElement && this.productData.product_name) {
+      productNameElement.textContent = this.productData.product_name;
     }
     
-    return await this._makeRequest(`customers${queryString}`);
-  }
-  
-  // ดึงข้อมูลลูกค้าตาม ID
-  async getCustomerById(customerId) {
-    return await this._makeRequest(`customers/${customerId}`);
-  }
-  
-  // เพิ่มลูกค้าใหม่
-  async createCustomer(customerData) {
-    return await this._makeRequest('customers', 'POST', customerData);
-  }
-  
-  // อัปเดตข้อมูลลูกค้า
-  async updateCustomer(customerId, customerData) {
-    return await this._makeRequest(`customers/${customerId}`, 'PUT', customerData);
-  }
-  
-  // ลบลูกค้า
-  async deleteCustomer(customerId) {
-    return await this._makeRequest(`customers/${customerId}`, 'DELETE');
-  }
-  
-  /**
-   * API Endpoints สำหรับการขาย
-   */
-  
-  // ดึงรายการขาย
-  async getSales(searchParams = {}) {
-    let queryString = '';
-    
-    if (Object.keys(searchParams).length > 0) {
-      queryString = '?' + new URLSearchParams(searchParams).toString();
+    // อัพเดทรหัสสินค้า
+    const productCodeElement = this.modalElement.querySelector('#product-code');
+    if (productCodeElement && this.productData.product_id) {
+      productCodeElement.textContent = `รหัสสินค้า: ${this.productData.product_id}`;
     }
     
-    return await this._makeRequest(`sales${queryString}`);
-  }
-  
-  // ดึงข้อมูลการขายตาม ID
-  async getSaleById(saleId) {
-    return await this._makeRequest(`sales/${saleId}`);
-  }
-  
-  // สร้างการขายใหม่
-  async createSale(saleData) {
-    return await this._makeRequest('sales', 'POST', saleData);
-  }
-  
-  // อัปเดตข้อมูลการขาย
-  async updateSale(saleId, saleData) {
-    return await this._makeRequest(`sales/${saleId}`, 'PUT', saleData);
-  }
-  
-  // ลบการขาย
-  async deleteSale(saleId) {
-    return await this._makeRequest(`sales/${saleId}`, 'DELETE');
+    // อัพเดทราคา
+    const productPriceElement = this.modalElement.querySelector('#product-price');
+    if (productPriceElement && this.productData.price) {
+      productPriceElement.textContent = `฿${Number(this.productData.price).toLocaleString()}`;
+    }
+    
+    // อัพเดทรูปภาพ
+    const productImageElement = this.modalElement.querySelector('#product-image');
+    if (productImageElement && this.productData.imgurl) {
+      productImageElement.style.backgroundImage = `url('${this.productData.imgurl}')`;
+      productImageElement.style.backgroundSize = 'cover';
+      productImageElement.style.backgroundPosition = 'center';
+    }
+    
+    // อัพเดทสถานะสต๊อก (ถ้ามี)
+    if (this.productData.stock !== undefined) {
+      // สร้างหรือค้นหา element ที่แสดงสถานะสต๊อก
+      let stockStatusElement = this.modalElement.querySelector('#stock-status');
+      if (!stockStatusElement) {
+        stockStatusElement = document.createElement('p');
+        stockStatusElement.id = 'stock-status';
+        stockStatusElement.className = 'stock-status';
+        // เพิ่มเข้าไปในส่วนของข้อมูลสินค้า
+        this.modalElement.querySelector('.preview-header > div').appendChild(stockStatusElement);
+      }
+      
+      // กำหนดสถานะและสี
+      const stockStatus = this.productData.stock > 0 ? 'มีสินค้า' : 'สินค้าหมด';
+      const stockClass = this.productData.stock > 0 ? 'in-stock' : 'out-of-stock';
+      
+      stockStatusElement.innerHTML = `
+        <span class="${stockClass}">${stockStatus}</span>
+        <span class="stock-count">(เหลือ ${this.productData.stock} เครื่อง)</span>
+      `;
+    }
+    
+    // อัพเดทหมวดหมู่ (ถ้ามี)
+    if (this.productData.category_name) {
+      let categoryElement = this.modalElement.querySelector('#product-category');
+      if (!categoryElement) {
+        categoryElement = document.createElement('p');
+        categoryElement.id = 'product-category';
+        categoryElement.className = 'product-category';
+        // เพิ่มเข้าไปในส่วนของข้อมูลสินค้า
+        this.modalElement.querySelector('.preview-header > div').appendChild(categoryElement);
+      }
+      
+      categoryElement.textContent = `หมวดหมู่: ${this.productData.category_name}`;
+    }
   }
   
   /**
-   * API Endpoints สำหรับ Dashboard และรายงาน
+   * ตั้งค่า Event Listeners
    */
-  
-  // ดึงข้อมูลภาพรวมสำหรับ Dashboard
-  async getDashboardData() {
-    return await this._makeRequest('dashboard');
-  }
-  
-  // ดึงรายงานการขายตามช่วงเวลา
-  async getSalesReport(startDate, endDate) {
-    const queryParams = new URLSearchParams({
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0]
-    }).toString();
+  setupEventListeners() {
+    if (!this.modalElement) return;
     
-    return await this._makeRequest(`reports/sales?${queryParams}`);
-  }
-  
-  // ดึงรายงานสินค้าขายดี
-  async getTopSellingProducts(period = 'month', limit = 10) {
-    const queryParams = new URLSearchParams({
-      period: period,
-      limit: limit
-    }).toString();
+    // ปุ่มปิด Modal
+    const closeButtons = this.modalElement.querySelectorAll('.modal-close');
+    closeButtons.forEach(button => {
+      button.addEventListener('click', this.close);
+    });
     
-    return await this._makeRequest(`reports/products/top-selling?${queryParams}`);
+    // ปุ่มส่งข้อมูล
+    const sendButton = this.modalElement.querySelector('#sendDocuments');
+    if (sendButton) {
+      sendButton.addEventListener('click', this.handleSend);
+    }
+    
+    // ช่องทางการส่ง
+    const shareMethods = this.modalElement.querySelectorAll('.share-method');
+    shareMethods.forEach(method => {
+      method.addEventListener('click', (event) => {
+        this.selectShareMethod(event.currentTarget.getAttribute('data-method'));
+      });
+    });
   }
   
   /**
-   * API Endpoints สำหรับผู้ใช้งาน
+   * เลือกช่องทางการส่ง
+   * @param {string} methodType - ประเภทของช่องทางการส่ง (line, email, sms, qr)
    */
+  selectShareMethod(methodType) {
+    if (!this.modalElement) return;
+    
+    // บันทึกช่องทางที่เลือก
+    this.selectedMethod = methodType;
+    
+    // ล้างการเลือกช่องทางทั้งหมด
+    const shareMethods = this.modalElement.querySelectorAll('.share-method');
+    shareMethods.forEach(method => {
+      method.classList.remove('selected');
+    });
+    
+    // เลือกช่องทางที่คลิก
+    const selectedMethod = this.modalElement.querySelector(`.share-method[data-method="${methodType}"]`);
+    if (selectedMethod) {
+      selectedMethod.classList.add('selected');
+    }
+  }
   
-  // เข้าสู่ระบบ
-  async login(username, password) {
-    const loginData = {
-      username: username,
-      password: password
+  /**
+   * ปิด Modal
+   */
+  close() {
+    if (this.modalElement) {
+      // เพิ่ม class fade-out animation
+      this.modalElement.classList.add('fade-out');
+      
+      // รอให้ animation เสร็จก่อนลบ element
+      setTimeout(() => {
+        document.body.removeChild(this.modalElement);
+        this.modalElement = null;
+        this.productData = null;
+        this.selectedMethod = null;
+      }, 300);
+    }
+  }
+  
+  /**
+   * จัดการการส่งข้อมูล
+   */
+  async handleSend() {
+    if (!this.modalElement || !this.productData) return;
+    
+    // ตรวจสอบว่าเลือกลูกค้าหรือไม่
+    const customerSelect = this.modalElement.querySelector('#customer-select');
+    const customerContact = this.modalElement.querySelector('#customer-contact');
+    
+    let recipient = '';
+    let recipientId = '';
+    
+    if (customerSelect && customerSelect.value) {
+      recipientId = customerSelect.value;
+      recipient = customerSelect.options[customerSelect.selectedIndex].text;
+    } else if (customerContact && customerContact.value) {
+      recipient = customerContact.value;
+    } else {
+      this.showToast('กรุณาเลือกหรือระบุลูกค้าที่ต้องการส่งข้อมูล', 'error');
+      return;
+    }
+    
+    // ตรวจสอบว่าเลือกช่องทางการส่งหรือไม่
+    if (!this.selectedMethod) {
+      this.showToast('กรุณาเลือกช่องทางการส่งข้อมูล', 'error');
+      return;
+    }
+    
+    // รวบรวมข้อมูลที่เลือก
+    const sharedData = this.gatherSharedData();
+    
+    // สร้างข้อมูลสำหรับส่งไปยัง API
+    const shareRequest = {
+      productId: this.productData.product_id,
+      recipientId: recipientId,
+      recipientContact: recipient,
+      shareMethod: this.selectedMethod,
+      sharedData: sharedData,
+      message: this.modalElement.querySelector('#custom-message').value,
+      timestamp: new Date().toISOString()
     };
     
-    const response = await this._makeRequest('auth/login', 'POST', loginData, false);
-    
-    // เก็บ token เมื่อเข้าสู่ระบบสำเร็จ
-    if (response && response.token) {
-      this.setAuthToken(response.token);
+    try {
+      // แสดง loading
+      this.showLoading();
+      
+      // จำลองการส่งข้อมูล (ในกรณีจริงจะส่งไปยัง API)
+      console.log('ส่งข้อมูล:', shareRequest);
+      
+      // จำลองการรอการตอบกลับ
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // ซ่อน loading
+      this.hideLoading();
+      
+      // แสดงข้อความสำเร็จ
+      this.showToast(`ส่งข้อมูลสินค้า ${this.productData.product_name} ให้ ${recipient} ทาง ${this.getMethodName(this.selectedMethod)} เรียบร้อยแล้ว`, 'success');
+      
+      // ปิด Modal
+      this.close();
+    } catch (error) {
+      console.error('เกิดข้อผิดพลาดในการส่งข้อมูล:', error);
+      this.hideLoading();
+      this.showToast('ไม่สามารถส่งข้อมูลได้ โปรดลองใหม่อีกครั้ง', 'error');
     }
+  }
+  
+  /**
+   * รวบรวมข้อมูลที่เลือกเพื่อส่ง
+   * @returns {Object} - ข้อมูลที่เลือก
+   */
+  gatherSharedData() {
+    if (!this.modalElement) return {};
     
-    return response;
-  }
-  
-  // ดึงข้อมูลผู้ใช้ปัจจุบัน
-  async getCurrentUser() {
-    return await this._makeRequest('users/me');
-  }
-  
-  // อัปเดตข้อมูลผู้ใช้
-  async updateUser(userData) {
-    return await this._makeRequest('users/me', 'PUT', userData);
-  }
-  
-  // เปลี่ยนรหัสผ่าน
-  async changePassword(currentPassword, newPassword) {
-    const passwordData = {
-      currentPassword: currentPassword,
-      newPassword: newPassword
+    const sharedData = {
+      documents: [],
+      info: []
     };
     
-    return await this._makeRequest('users/me/password', 'PUT', passwordData);
+    // ตรวจสอบเอกสารที่เลือก
+    const documentCheckboxes = this.modalElement.querySelectorAll('#document-options input[type="checkbox"]');
+    documentCheckboxes.forEach(checkbox => {
+      if (checkbox.checked) {
+        sharedData.documents.push(checkbox.id);
+      }
+    });
+    
+    // ตรวจสอบข้อมูลราคาและสต๊อกที่เลือก
+    if (this.modalElement.querySelector('#price')?.checked) {
+      sharedData.info.push('price');
+    }
+    
+    if (this.modalElement.querySelector('#stock')?.checked) {
+      sharedData.info.push('stock');
+    }
+    
+    if (this.modalElement.querySelector('#delivery')?.checked) {
+      sharedData.info.push('delivery');
+    }
+    
+    if (this.modalElement.querySelector('#warranty')?.checked) {
+      sharedData.info.push('warranty');
+    }
+    
+    return sharedData;
   }
   
-  // ออกจากระบบ
-  logout() {
-    this.clearAuthToken();
-    // นำทางกลับไปยังหน้าเข้าสู่ระบบ
-    window.location.href = 'login.html';
+  /**
+   * แปลงชื่อช่องทางการส่ง
+   * @param {string} methodType - ประเภทช่องทางการส่ง
+   * @returns {string} - ชื่อช่องทางการส่งที่แสดงผล
+   */
+  getMethodName(methodType) {
+    const methodNames = {
+      'line': 'LINE',
+      'email': 'อีเมล',
+      'sms': 'SMS',
+      'qr': 'QR Code'
+    };
+    
+    return methodNames[methodType] || methodType;
+  }
+  
+  /**
+   * แสดง Toast notification
+   * @param {string} message - ข้อความที่ต้องการแสดง
+   * @param {string} type - ประเภทของ toast (success, error, info)
+   */
+  showToast(message, type = 'info') {
+    // ตรวจสอบว่ามี toast-container หรือไม่
+    let toastContainer = document.querySelector('.toast-container');
+    
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.className = 'toast-container';
+      document.body.appendChild(toastContainer);
+    }
+    
+    // สร้าง toast
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    // เลือกไอคอนตามประเภท
+    let icon = 'info-circle';
+    if (type === 'success') {
+      icon = 'check-circle';
+    } else if (type === 'error') {
+      icon = 'exclamation-circle';
+    }
+    
+    toast.innerHTML = `
+      <div class="toast-icon">
+        <i class="fas fa-${icon}"></i>
+      </div>
+      <div class="toast-content">
+        <p>${message}</p>
+      </div>
+      <button class="toast-close">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    
+    // เพิ่ม toast ไปยัง container
+    toastContainer.appendChild(toast);
+    
+    // ตั้งค่า event listener สำหรับปุ่มปิด
+    const closeButton = toast.querySelector('.toast-close');
+    closeButton.addEventListener('click', () => {
+      toast.classList.add('hide');
+      setTimeout(() => {
+        if (toastContainer.contains(toast)) {
+          toastContainer.removeChild(toast);
+        }
+      }, 300);
+    });
+    
+    // ตั้งเวลาลบ toast
+    setTimeout(() => {
+      toast.classList.add('hide');
+      setTimeout(() => {
+        if (toastContainer.contains(toast)) {
+          toastContainer.removeChild(toast);
+        }
+      }, 300);
+    }, 5000);
   }
 }
 
-// สร้าง singleton instance
-const apiService = new ApiService();
-export default apiService;
+// ตั้งค่า event listener เมื่อ DOM โหลดเสร็จ
+document.addEventListener('DOMContentLoaded', () => {
+  // สร้าง instance ของ ShareModal
+  const shareModal = new ShareModal();
+  
+  // ตั้งค่า event listener สำหรับปุ่มแชร์สินค้า
+  const shareButtons = document.querySelectorAll('.share-product');
+  shareButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const productId = this.getAttribute('data-product-id');
+      shareModal.open(productId);
+    });
+  });
+  
+  // ทดสอบการเรียกใช้ ShareModal (ถ้าต้องการ)
+  // window.testShareModal = (productId) => {
+  //   shareModal.open(productId);
+  // }
+});

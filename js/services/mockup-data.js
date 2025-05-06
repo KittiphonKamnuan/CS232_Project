@@ -32,7 +32,7 @@ const mockupData = {
         discount: 8,
         stock: 2,
         images: [
-          "/assets/images/product-images/tv-samsung-qn90c.jpg",
+          "https://infohub-360.s3.us-east-1.amazonaws.com/Infohub-documents/productimg/GOOGLE+CLASSROOM.png",
           "/assets/images/product-images/tv-samsung-qn90c-2.jpg",
           "/assets/images/product-images/tv-samsung-qn90c-3.jpg"
         ],
@@ -394,5 +394,325 @@ const mockupData = {
     }
   };
   
+
+  // ฟังก์ชันเปิด Share Modal และดึงข้อมูลจาก API
+async function openShareModal(productId) {
+  console.log('กำลังเปิด Share Modal สำหรับสินค้า:', productId);
+  
+  try {
+    // แสดง loading indicator
+    const loadingModal = createLoadingModal();
+    document.body.appendChild(loadingModal);
+    
+    // ดึงข้อมูลสินค้าจาก API
+    const product = await fetchProductFromAPI(productId);
+    
+    // ปิด loading indicator
+    document.body.removeChild(loadingModal);
+    
+    if (!product) {
+      showErrorToast('ไม่พบข้อมูลสินค้า');
+      return;
+    }
+    
+    // สร้าง Modal element
+    const modalBackdrop = createModalFromTemplate();
+    
+    // เพิ่ม Modal ไปยัง body
+    document.body.appendChild(modalBackdrop);
+    
+    // อัพเดทข้อมูลสินค้าใน Modal
+    updateProductInfo(modalBackdrop, product);
+    
+    // ตั้งค่า event listeners
+    setupEventListeners(modalBackdrop, product);
+    
+  } catch (error) {
+    console.error('เกิดข้อผิดพลาดในการโหลดข้อมูล:', error);
+    showErrorToast('ไม่สามารถโหลดข้อมูลสินค้าได้ โปรดลองใหม่อีกครั้ง');
+  }
+}
+
+// ฟังก์ชันดึงข้อมูลสินค้าจาก API
+async function fetchProductFromAPI(productId) {
+  try {
+    const response = await fetch(`https://s9ohxtt51a.execute-api.us-east-1.amazonaws.com/GetProducts?product_id=${productId}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('เกิดข้อผิดพลาดในการดึงข้อมูลจาก API:', error);
+    throw error;
+  }
+}
+
+// ฟังก์ชันสร้าง loading modal
+function createLoadingModal() {
+  const loadingDiv = document.createElement('div');
+  loadingDiv.className = 'modal-backdrop';
+  loadingDiv.innerHTML = `
+    <div class="loading-container">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p>กำลังโหลดข้อมูลสินค้า...</p>
+    </div>
+  `;
+  return loadingDiv;
+}
+
+// ฟังก์ชันสร้าง Modal จาก Template
+function createModalFromTemplate() {
+  const modalTemplate = document.getElementById('share-modal-template');
+  const modalContent = modalTemplate.innerHTML;
+  
+  const modalBackdrop = document.createElement('div');
+  modalBackdrop.className = 'modal-backdrop';
+  modalBackdrop.style.display = 'flex';
+  modalBackdrop.innerHTML = modalContent;
+  
+  return modalBackdrop;
+}
+
+// ฟังก์ชันอัพเดทข้อมูลสินค้าใน Modal
+function updateProductInfo(modalElement, product) {
+  // อัพเดทชื่อสินค้า
+  const productNameElement = modalElement.querySelector('#product-name');
+  if (productNameElement) {
+    productNameElement.textContent = product.product_name;
+  }
+  
+  // อัพเดทรหัสสินค้า
+  const productCodeElement = modalElement.querySelector('#product-code');
+  if (productCodeElement) {
+    productCodeElement.textContent = `รหัสสินค้า: ${product.product_id}`;
+  }
+  
+  // อัพเดทราคา
+  const productPriceElement = modalElement.querySelector('#product-price');
+  if (productPriceElement) {
+    productPriceElement.textContent = `฿${Number(product.price).toLocaleString()}`;
+  }
+  
+  // อัพเดทรูปภาพ
+  const productImageElement = modalElement.querySelector('#product-image');
+  if (productImageElement && product.imgurl) {
+    productImageElement.style.backgroundImage = `url('${product.imgurl}')`;
+    productImageElement.style.backgroundSize = 'cover';
+    productImageElement.style.backgroundPosition = 'center';
+  }
+}
+
+// ฟังก์ชันตั้งค่า event listeners
+function setupEventListeners(modalElement, product) {
+  // ปุ่มปิด Modal
+  const closeButtons = modalElement.querySelectorAll('.modal-close');
+  closeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      document.body.removeChild(modalElement);
+    });
+  });
+  
+  // ปุ่มส่งข้อมูล
+  const sendButton = modalElement.querySelector('#sendDocuments');
+  if (sendButton) {
+    sendButton.addEventListener('click', () => {
+      handleSendData(modalElement, product);
+    });
+  }
+  
+  // ช่องทางการส่ง
+  const shareMethods = modalElement.querySelectorAll('.share-method');
+  shareMethods.forEach(method => {
+    method.addEventListener('click', (event) => {
+      const methodType = event.currentTarget.getAttribute('data-method');
+      selectShareMethod(modalElement, methodType);
+    });
+  });
+}
+
+// ฟังก์ชันเลือกช่องทางการส่ง
+function selectShareMethod(modalElement, methodType) {
+  // ล้างการเลือกช่องทางทั้งหมด
+  const shareMethods = modalElement.querySelectorAll('.share-method');
+  shareMethods.forEach(method => {
+    method.classList.remove('selected');
+  });
+  
+  // เลือกช่องทางที่คลิก
+  const selectedMethod = modalElement.querySelector(`.share-method[data-method="${methodType}"]`);
+  if (selectedMethod) {
+    selectedMethod.classList.add('selected');
+  }
+}
+
+// ฟังก์ชันจัดการการส่งข้อมูล
+function handleSendData(modalElement, product) {
+  // ตรวจสอบว่าเลือกลูกค้าหรือไม่
+  const customerSelect = modalElement.querySelector('#customer-select');
+  const customerContact = modalElement.querySelector('#customer-contact');
+  
+  let recipient = '';
+  
+  if (customerSelect && customerSelect.value) {
+    recipient = customerSelect.options[customerSelect.selectedIndex].text;
+  } else if (customerContact && customerContact.value) {
+    recipient = customerContact.value;
+  } else {
+    showErrorToast('กรุณาเลือกหรือระบุลูกค้าที่ต้องการส่งข้อมูล');
+    return;
+  }
+  
+  // ตรวจสอบว่าเลือกช่องทางการส่งหรือไม่
+  const selectedMethod = modalElement.querySelector('.share-method.selected');
+  if (!selectedMethod) {
+    showErrorToast('กรุณาเลือกช่องทางการส่งข้อมูล');
+    return;
+  }
+  
+  const methodType = selectedMethod.getAttribute('data-method');
+  
+  // รวบรวมข้อมูลที่เลือก
+  const selectedOptions = getSelectedOptions(modalElement);
+  
+  // ข้อความเพิ่มเติม
+  const customMessage = modalElement.querySelector('#custom-message').value;
+  
+  // แสดงข้อความยืนยัน
+  showSuccessToast(`ส่งข้อมูลสินค้า ${product.product_name} ให้ ${recipient} ทาง ${getMethodName(methodType)} เรียบร้อยแล้ว`);
+  
+  // ปิด Modal
+  document.body.removeChild(modalElement);
+}
+
+// ฟังก์ชันรวบรวมตัวเลือกที่เลือก
+function getSelectedOptions(modalElement) {
+  const selectedOptions = {
+    documents: [],
+    info: []
+  };
+  
+  // ตรวจสอบเอกสารที่เลือก
+  const documentCheckboxes = modalElement.querySelectorAll('#document-options input[type="checkbox"]');
+  documentCheckboxes.forEach(checkbox => {
+    if (checkbox.checked) {
+      selectedOptions.documents.push(checkbox.id);
+    }
+  });
+  
+  // ตรวจสอบข้อมูลราคาและสต๊อกที่เลือก
+  if (modalElement.querySelector('#price').checked) {
+    selectedOptions.info.push('price');
+  }
+  
+  if (modalElement.querySelector('#stock').checked) {
+    selectedOptions.info.push('stock');
+  }
+  
+  if (modalElement.querySelector('#delivery').checked) {
+    selectedOptions.info.push('delivery');
+  }
+  
+  if (modalElement.querySelector('#warranty').checked) {
+    selectedOptions.info.push('warranty');
+  }
+  
+  return selectedOptions;
+}
+
+// ฟังก์ชันแปลงชื่อช่องทางการส่ง
+function getMethodName(methodType) {
+  const methodNames = {
+    'line': 'LINE',
+    'email': 'อีเมล',
+    'sms': 'SMS',
+    'qr': 'QR Code'
+  };
+  
+  return methodNames[methodType] || methodType;
+}
+
+// ฟังก์ชันแสดง Toast สำเร็จ
+function showSuccessToast(message) {
+  showToast(message, 'success');
+}
+
+// ฟังก์ชันแสดง Toast ผิดพลาด
+function showErrorToast(message) {
+  showToast(message, 'error');
+}
+
+// ฟังก์ชันแสดง Toast
+function showToast(message, type = 'info') {
+  // ตรวจสอบว่ามี toast-container หรือไม่
+  let toastContainer = document.querySelector('.toast-container');
+  
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container';
+    document.body.appendChild(toastContainer);
+  }
+  
+  // สร้าง toast
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  
+  // เลือกไอคอนตามประเภท
+  let icon = 'info-circle';
+  if (type === 'success') {
+    icon = 'check-circle';
+  } else if (type === 'error') {
+    icon = 'exclamation-circle';
+  }
+  
+  toast.innerHTML = `
+    <div class="toast-icon">
+      <i class="fas fa-${icon}"></i>
+    </div>
+    <div class="toast-content">
+      <p>${message}</p>
+    </div>
+    <button class="toast-close">
+      <i class="fas fa-times"></i>
+    </button>
+  `;
+  
+  // เพิ่ม toast ไปยัง container
+  toastContainer.appendChild(toast);
+  
+  // ตั้งค่า event listener สำหรับปุ่มปิด
+  const closeButton = toast.querySelector('.toast-close');
+  closeButton.addEventListener('click', () => {
+    toast.classList.add('hide');
+    setTimeout(() => {
+      toastContainer.removeChild(toast);
+    }, 300);
+  });
+  
+  // ตั้งเวลาลบ toast
+  setTimeout(() => {
+    toast.classList.add('hide');
+    setTimeout(() => {
+      if (toastContainer.contains(toast)) {
+        toastContainer.removeChild(toast);
+      }
+    }, 300);
+  }, 5000);
+}
+
+// ตั้งค่า event listener สำหรับปุ่มแชร์สินค้า
+document.addEventListener('DOMContentLoaded', () => {
+  const shareButtons = document.querySelectorAll('.share-product');
+  shareButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      const productId = this.getAttribute('data-product-id');
+      openShareModal(productId);
+    });
+  });
+});
   // ส่งออกข้อมูล mockup สำหรับนำไปใช้ในส่วนอื่นๆ ของแอปพลิเคชัน
   export default mockupData;
