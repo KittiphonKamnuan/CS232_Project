@@ -108,11 +108,54 @@ body.login-page {
   font-weight: var(--font-weight-bold);
   margin-bottom: var(--spacing-6);
   color: var(--color-text);
+  text-align: center;
 }
 
 /* ========================================================================
    LOGIN FORM ELEMENTS
    ======================================================================== */
+
+/**
+ * Form Group
+ * 
+ * Container for form elements
+ */
+.form-group {
+  margin-bottom: var(--spacing-6);
+}
+
+/**
+ * Form Label
+ * 
+ * Label for form inputs
+ */
+.form-label {
+  display: block;
+  margin-bottom: var(--spacing-2);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+/**
+ * Form Input
+ * 
+ * Text inputs for the form
+ */
+.form-input {
+  width: 100%;
+  padding: var(--spacing-3);
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
+  transition: border-color var(--transition-fast);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary-light);
+}
 
 /**
  * Password Group
@@ -205,11 +248,74 @@ body.login-page {
   position: relative;
   width: 100%;
   margin-top: var(--spacing-6);
+  padding: var(--spacing-3) var(--spacing-4);
+  background-color: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-md);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.login-button:hover {
+  background-color: var(--color-primary-dark);
 }
 
 .spinner {
   animation: spin 1s linear infinite;
   margin-right: var(--spacing-2);
+  display: inline-block;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ========================================================================
+   TAB NAVIGATION
+   ======================================================================== */
+
+/**
+ * Tab Container
+ * 
+ * Container for login method tabs
+ */
+.tab-container {
+  display: flex;
+  border-bottom: 1px solid var(--color-gray-200);
+  margin-bottom: var(--spacing-6);
+}
+
+.tab {
+  padding: var(--spacing-3) var(--spacing-4);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.tab:hover {
+  color: var(--color-primary);
+}
+
+.tab.active {
+  color: var(--color-primary);
+  border-bottom: 2px solid var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
 }
 
 /* ========================================================================
@@ -277,12 +383,8 @@ body.login-page {
  * 
  * Utility classes for hiding login components
  */
-#errorMessage.hide {
-  display: none;
-}
-
-#loadingSpinner.hide {
-  display: none;
+.hide {
+  display: none !important;
 }
 
 /* ========================================================================
@@ -309,4 +411,56 @@ body.login-page {
   }
 }
 
-/* Dark mode adjustments */
+/* ========================================================================
+   DEFAULT CSS VARIABLES (FALLBACK)
+   ======================================================================== */
+
+:root {
+  /* Colors */
+  --color-primary: #3498db;
+  --color-primary-light: #ebf5fb;
+  --color-primary-dark: #2980b9;
+  --color-danger: #e74c3c;
+  --color-danger-light: #fdedeb;
+  --color-text: #2c3e50;
+  --color-text-secondary: #7f8c8d;
+  --color-surface: #ffffff;
+  --color-gray-50: #f8f9fa;
+  --color-gray-200: #e9ecef;
+  --color-gray-300: #dee2e6;
+  --color-gray-400: #ced4da;
+  --color-gray-600: #6c757d;
+  
+  /* Spacing */
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  
+  /* Font Sizes */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  
+  /* Font Weights */
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  
+  /* Border Radius */
+  --border-radius-sm: 0.25rem;
+  --border-radius-md: 0.375rem;
+  --border-radius-lg: 0.5rem;
+  
+  /* Shadows */
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* Transitions */
+  --transition-fast: 0.15s;
+  --transition-normal: 0.3s;
+  --transition-timing-ease: ease-in-out;
+}

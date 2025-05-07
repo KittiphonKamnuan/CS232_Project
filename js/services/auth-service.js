@@ -1,54 +1,104 @@
 /**
  * InfoHub 360 - Authentication Service
  * 
- * This file contains functions for user authentication using AWS Cognito and DynamoDB
+ * This file contains functions for user authentication using AWS Cognito
  */
 
-import { COGNITO, TABLES, initializeAWS } from './aws-config.js';
+import { COGNITO } from '../config/aws-config.js';
 
 class AuthService {
   constructor() {
-    // Initialize AWS services
-    const { auth, dynamoDB } = initializeAWS();
-    this.auth = auth;
-    this.dynamoDB = dynamoDB;
+    // Initialize Cognito User Pool
+    this.userPool = new AmazonCognitoIdentity.CognitoUserPool({
+      UserPoolId: COGNITO.USER_POOL_ID,
+      ClientId: COGNITO.CLIENT_ID
+    });
     
     // Check if user is already authenticated
     this.isAuthenticated = !!sessionStorage.getItem('infohub_auth');
+    this.cognitoUser = null;
   }
   
   /**
-   * Authenticate a user via DynamoDB or Cognito
+   * Authenticate a user via Cognito
    * @param {string} username - The username
    * @param {string} password - The password
    * @returns {Promise} - Resolves to user data or rejects with error
    */
   login(username, password) {
     return new Promise((resolve, reject) => {
-      // ตัวเลือก 1: ใช้ DynamoDB ตรวจสอบโดยตรง (ไม่แนะนำในการใช้งานจริง เพราะ credentials จะถูกเปิดเผยบนฝั่ง client)
-      // สำหรับการพัฒนาหรือทดสอบเท่านั้น
-      this._loginWithDynamoDB(username, password)
-        .then(userData => {
-          // Store auth token
-          sessionStorage.setItem('infohub_auth', 'dynamodb-user-authenticated');
-          sessionStorage.setItem('infohub_user', JSON.stringify(userData));
+      // Create authentication details
+      const authenticationData = {
+        Username: username,
+        Password: password
+      };
+      
+      const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
+      
+      // Create user
+      const userData = {
+        Username: username,
+        Pool: this.userPool
+      };
+      
+      this.cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
+      
+      // Authenticate user
+      this.cognitoUser.authenticateUser(authenticationDetails, {
+        onSuccess: (session) => {
+          // Get tokens from the session
+          const idToken = session.getIdToken().getJwtToken();
+          const accessToken = session.getAccessToken().getJwtToken();
+          const refreshToken = session.getRefreshToken().getToken();
+          
+          // Store tokens in sessionStorage
+          sessionStorage.setItem('infohub_auth', idToken);
+          sessionStorage.setItem('infohub_access_token', accessToken);
+          sessionStorage.setItem('infohub_refresh_token', refreshToken);
+          
           this.isAuthenticated = true;
-          resolve(userData);
-        })
-        .catch(error => {
-          // ถ้าล้มเหลว ให้ลองใช้ Cognito
-          this._loginWithCognito(username, password)
-            .then(userData => {
-              // Store auth token from Cognito
-              sessionStorage.setItem('infohub_auth', userData.token);
-              sessionStorage.setItem('infohub_user', JSON.stringify(userData.attributes));
-              this.isAuthenticated = true;
-              resolve(userData.attributes);
-            })
-            .catch(error => {
-              reject(error);
+          
+          // Get user attributes
+          this.cognitoUser.getUserAttributes((err, attributes) => {
+            if (err) {
+              console.error('Error getting user attributes:', err);
+              reject(err);
+              return;
+            }
+            
+            // Convert attributes array to object
+            const userAttributes = {};
+            attributes.forEach(attr => {
+              userAttributes[attr.getName()] = attr.getValue();
             });
-        });
+            
+            // Store user attributes
+            sessionStorage.setItem('infohub_user', JSON.stringify(userAttributes));
+            
+            resolve(userAttributes);
+          });
+        },
+        onFailure: (err) => {
+          console.error('Authentication failed:', err);
+          reject(err);
+        },
+        newPasswordRequired: (userAttributes, requiredAttributes) => {
+          // Handle new password required challenge
+          reject({
+            code: 'NewPasswordRequired',
+            userAttributes: userAttributes,
+            requiredAttributes: requiredAttributes
+          });
+        },
+        mfaRequired: (challengeName, challengeParameters) => {
+          // Handle MFA challenge (if MFA is enabled)
+          reject({
+            code: 'MFARequired',
+            challengeName: challengeName,
+            challengeParameters: challengeParameters
+          });
+        }
+      });
     });
   }
   
@@ -58,12 +108,15 @@ class AuthService {
   logout() {
     // Clear session storage
     sessionStorage.removeItem('infohub_auth');
+    sessionStorage.removeItem('infohub_access_token');
+    sessionStorage.removeItem('infohub_refresh_token');
     sessionStorage.removeItem('infohub_user');
     this.isAuthenticated = false;
     
     // If using Cognito, sign out from Cognito too
     if (this.cognitoUser) {
       this.cognitoUser.signOut();
+      this.cognitoUser = null;
     }
     
     // Redirect to login page
@@ -90,87 +143,37 @@ class AuthService {
    */
   hasRole(role) {
     const user = this.getCurrentUser();
-    return user && user.roles && user.roles.includes(role);
+    return user && user['custom:role'] && user['custom:role'].includes(role);
   }
   
   /**
-   * Authenticate with DynamoDB directly
-   * @private
+   * Complete new password challenge (for first-time login)
+   * @param {string} newPassword - The new password
+   * @param {Object} userAttributes - User attributes to update
+   * @returns {Promise} - Resolves when challenge is completed
    */
-  _loginWithDynamoDB(username, password) {
+  completeNewPasswordChallenge(newPassword, userAttributes = {}) {
     return new Promise((resolve, reject) => {
-      // Query the Users table in DynamoDB
-      const params = {
-        TableName: TABLES.USERS,
-        Key: {
-          username: username
-        }
-      };
+      if (!this.cognitoUser) {
+        reject(new Error('No authenticated user'));
+        return;
+      }
       
-      this.dynamoDB.get(params, (err, data) => {
-        if (err) {
-          console.error("DynamoDB error:", err);
-          reject(new Error("การเชื่อมต่อฐานข้อมูลมีปัญหา"));
-          return;
-        }
-        
-        // Check if user exists and password matches
-        if (data.Item && this._verifyPassword(password, data.Item.passwordHash)) {
-          // Remove sensitive data before returning
-          const userData = { ...data.Item };
-          delete userData.passwordHash;
-          
-          resolve(userData);
-        } else {
-          reject(new Error("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง"));
-        }
-      });
-    });
-  }
-  
-  /**
-   * Authenticate with Amazon Cognito
-   * @private
-   */
-  _loginWithCognito(username, password) {
-    return new Promise((resolve, reject) => {
-      // Create authentication details
-      const authenticationData = {
-        Username: username,
-        Password: password
-      };
-      
-      const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
-      
-      // Create user
-      const userData = {
-        Username: username,
-        Pool: this.auth
-      };
-      
-      this.cognitoUser = new AmazonCognitoIdentity.CognitoUser(userData);
-      
-      // Authenticate user
-      this.cognitoUser.authenticateUser(authenticationDetails, {
+      this.cognitoUser.completeNewPasswordChallenge(newPassword, userAttributes, {
         onSuccess: (session) => {
-          // Get user attributes
-          this.cognitoUser.getUserAttributes((err, attributes) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            
-            // Convert attributes array to object
-            const userAttributes = {};
-            attributes.forEach(attr => {
-              userAttributes[attr.Name] = attr.Value;
-            });
-            
-            resolve({
-              token: session.getIdToken().getJwtToken(),
-              attributes: userAttributes
-            });
-          });
+          // Get tokens from the session
+          const idToken = session.getIdToken().getJwtToken();
+          const accessToken = session.getAccessToken().getJwtToken();
+          const refreshToken = session.getRefreshToken().getToken();
+          
+          // Store tokens in sessionStorage
+          sessionStorage.setItem('infohub_auth', idToken);
+          sessionStorage.setItem('infohub_access_token', accessToken);
+          sessionStorage.setItem('infohub_refresh_token', refreshToken);
+          
+          this.isAuthenticated = true;
+          
+          resolve(session);
         },
         onFailure: (err) => {
           reject(err);
@@ -180,16 +183,184 @@ class AuthService {
   }
   
   /**
-   * Verify password against hash
-   * @private
+   * Change password for authenticated user
+   * @param {string} oldPassword - The old password
+   * @param {string} newPassword - The new password
+   * @returns {Promise} - Resolves when password is changed
    */
-  _verifyPassword(password, hash) {
-    // In a real application, you would use a proper password hashing library
-    // This is just a demo for illustration purposes
-    // DO NOT USE THIS IN PRODUCTION
+  changePassword(oldPassword, newPassword) {
+    return new Promise((resolve, reject) => {
+      if (!this.cognitoUser) {
+        // Try to get current authenticated user
+        const userData = this.getCurrentUser();
+        if (!userData) {
+          reject(new Error('No authenticated user'));
+          return;
+        }
+        
+        const currentUsername = userData.email || userData.username;
+        
+        // Create Cognito user
+        this.cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+          Username: currentUsername,
+          Pool: this.userPool
+        });
+      }
+      
+      this.cognitoUser.changePassword(oldPassword, newPassword, (err, result) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(result);
+      });
+    });
+  }
+  
+  /**
+   * Request password reset for a user
+   * @param {string} username - The username
+   * @returns {Promise} - Resolves when code is sent
+   */
+  forgotPassword(username) {
+    return new Promise((resolve, reject) => {
+      // Create Cognito user
+      const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+        Username: username,
+        Pool: this.userPool
+      });
+      
+      cognitoUser.forgotPassword({
+        onSuccess: (result) => {
+          resolve(result);
+        },
+        onFailure: (err) => {
+          reject(err);
+        },
+        inputVerificationCode: (data) => {
+          resolve(data);
+        }
+      });
+    });
+  }
+  
+  /**
+   * Confirm new password with verification code
+   * @param {string} username - The username
+   * @param {string} verificationCode - The verification code
+   * @param {string} newPassword - The new password
+   * @returns {Promise} - Resolves when password is reset
+   */
+  confirmPassword(username, verificationCode, newPassword) {
+    return new Promise((resolve, reject) => {
+      // Create Cognito user
+      const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+        Username: username,
+        Pool: this.userPool
+      });
+      
+      cognitoUser.confirmPassword(verificationCode, newPassword, {
+        onSuccess: () => {
+          resolve();
+        },
+        onFailure: (err) => {
+          reject(err);
+        }
+      });
+    });
+  }
+  
+  /**
+   * Refresh session using refresh token
+   * @returns {Promise} - Resolves with new session
+   */
+  refreshSession() {
+    return new Promise((resolve, reject) => {
+      if (!this.cognitoUser) {
+        // Try to get current authenticated user
+        const userData = this.getCurrentUser();
+        if (!userData) {
+          reject(new Error('No authenticated user'));
+          return;
+        }
+        
+        const currentUsername = userData.email || userData.username;
+        
+        // Create Cognito user
+        this.cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+          Username: currentUsername,
+          Pool: this.userPool
+        });
+      }
+      
+      // Get refresh token from sessionStorage
+      const refreshToken = sessionStorage.getItem('infohub_refresh_token');
+      if (!refreshToken) {
+        reject(new Error('No refresh token'));
+        return;
+      }
+      
+      // Create refresh token object
+      const cognitoRefreshToken = new AmazonCognitoIdentity.CognitoRefreshToken({
+        RefreshToken: refreshToken
+      });
+      
+      // Refresh session
+      this.cognitoUser.refreshSession(cognitoRefreshToken, (err, session) => {
+        if (err) {
+          console.error('Error refreshing session:', err);
+          reject(err);
+          return;
+        }
+        
+        // Get tokens from the session
+        const idToken = session.getIdToken().getJwtToken();
+        const accessToken = session.getAccessToken().getJwtToken();
+        const newRefreshToken = session.getRefreshToken().getToken();
+        
+        // Store tokens in sessionStorage
+        sessionStorage.setItem('infohub_auth', idToken);
+        sessionStorage.setItem('infohub_access_token', accessToken);
+        sessionStorage.setItem('infohub_refresh_token', newRefreshToken);
+        
+        this.isAuthenticated = true;
+        
+        resolve(session);
+      });
+    });
+  }
+  
+  /**
+   * Check if the current token is valid
+   * @returns {boolean} - True if token is valid
+   */
+  isTokenValid() {
+    // Check if there's a token
+    const idToken = sessionStorage.getItem('infohub_auth');
+    if (!idToken) {
+      return false;
+    }
     
-    // Simple comparison (for demo only)
-    return hash === password; // ในระบบจริงควรใช้ bcrypt หรือ scrypt
+    // In a real application, you would parse the JWT token and check its expiration
+    // For simplicity, we'll just check if it exists
+    // TODO: Implement proper token validation
+    
+    return true;
+  }
+  
+  /**
+   * Get the current Cognito user
+   * @returns {Object|null} - Cognito user object or null
+   */
+  getCognitoUser() {
+    // Get current user from the pool
+    const cognitoUser = this.userPool.getCurrentUser();
+    
+    if (cognitoUser) {
+      this.cognitoUser = cognitoUser;
+    }
+    
+    return this.cognitoUser;
   }
 }
 

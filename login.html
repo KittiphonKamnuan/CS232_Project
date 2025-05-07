@@ -4,10 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>InfoHub 360 - เข้าสู่ระบบ</title>
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <!-- เชื่อมต่อกับไฟล์ login.css -->
   <link rel="stylesheet" href="css/login.css">
+  <!-- AWS Cognito SDK - ตรวจสอบว่าเวอร์ชันนี้ทำงานได้ถูกต้อง -->
+  <!-- เพิ่มก่อน Cognito SDK -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/hmac-sha256.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/enc-base64.min.js"></script>
+   <!-- ลองใช้วิธีนี้แทน -->
+<script src="https://sdk.amazonaws.com/js/aws-sdk-2.1499.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.7/dist/amazon-cognito-identity.min.js"></script>
 </head>
-<body>
+<body class="login-page">
   <div class="login-container">
     <!-- Logo Section -->
     <div class="logo-section">
@@ -23,59 +33,63 @@
       <h2 class="card-title">เข้าสู่ระบบ</h2>
       
       <!-- Error Message -->
-      <div id="errorMessage" class="error-message">
+      <div id="errorMessage" class="error-message hide">
         <i class="fas fa-exclamation-circle"></i>
         <span id="errorText">ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</span>
       </div>
       
       <!-- Login Form -->
-      <form id="loginForm">
-        <div class="form-group">
-          <label for="username" class="form-label">ชื่อผู้ใช้</label>
-          <input 
-            type="text" 
-            id="username" 
-            class="form-input" 
-            placeholder="กรอกชื่อผู้ใช้" 
-            required
-          >
-        </div>
-        
-        <div class="form-group">
-          <label for="password" class="form-label">รหัสผ่าน</label>
-          <div class="password-group">
+      <div id="loginTab" class="tab-content active">
+        <form id="loginForm" onsubmit="return false;">
+          <div class="form-group">
+            <label for="username" class="form-label">ชื่อผู้ใช้</label>
             <input 
-              type="password" 
-              id="password" 
+              type="text" 
+              id="username" 
+              name="username"
               class="form-input" 
-              placeholder="กรอกรหัสผ่าน" 
+              placeholder="กรอกชื่อผู้ใช้" 
               required
             >
-            <button type="button" class="toggle-password" id="togglePassword">
-              <i class="fas fa-eye"></i>
-            </button>
           </div>
-          <a href="#" class="forgot-password">ลืมรหัสผ่าน?</a>
-        </div>
-        
-        <div class="form-group">
-          <div class="checkbox-group">
-            <input type="checkbox" id="rememberMe">
-            <label for="rememberMe" class="checkbox-label">จดจำฉันไว้ในระบบ</label>
+          
+          <div class="form-group">
+            <label for="password" class="form-label">รหัสผ่าน</label>
+            <div class="password-group">
+              <input 
+                type="password" 
+                id="password" 
+                name="password"
+                class="form-input" 
+                placeholder="กรอกรหัสผ่าน" 
+                required
+              >
+              <button type="button" class="toggle-password" id="togglePassword">
+                <i class="fas fa-eye"></i>
+              </button>
+            </div>
+            <a href="#" class="forgot-password" id="forgotPasswordLink">ลืมรหัสผ่าน?</a>
           </div>
-        </div>
-        
-        <button type="submit" class="btn" id="loginButton">
-          <span id="loadingSpinner" class="spinner">
-            <i class="fas fa-spinner"></i>
-          </span>
-          <span id="buttonText">เข้าสู่ระบบ</span>
-        </button>
-      </form>
+          
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input type="checkbox" id="rememberMe" name="rememberMe">
+              <label for="rememberMe" class="checkbox-label">จดจำฉันไว้ในระบบ</label>
+            </div>
+          </div>
+          
+          <button type="button" class="btn login-button" id="loginButton">
+            <span id="loadingSpinner" class="spinner hide">
+              <i class="fas fa-spinner"></i>
+            </span>
+            <span id="buttonText">เข้าสู่ระบบ</span>
+          </button>
+        </form>
+      </div>
       
       <div class="login-footer">
         <p class="signup-text">
-          ยังไม่มีบัญชี? <a href="#" class="signup-link">ติดต่อผู้ดูแลระบบ</a>
+          ยังไม่มีบัญชี? <a href="#" class="signup-link" id="signupLink">ติดต่อผู้ดูแลระบบ</a>
         </p>
       </div>
     </div>
@@ -91,6 +105,7 @@
     </div>
   </div>
   
+  <!-- เชื่อมต่อกับไฟล์ login.js -->
   <script src="js/login.js"></script>
 </body>
 </html>
