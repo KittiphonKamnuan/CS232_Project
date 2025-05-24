@@ -764,7 +764,8 @@ class SaleController {
     cancelButtons.forEach(btn => {
       btn.addEventListener('click', () => {
         if (confirm('คุณต้องการยกเลิกการสร้างการขายหรือไม่? ข้อมูลที่กรอกจะหายไป')) {
-          window.location.href = 'sales-report.html';
+          // ย้อนกลับไป 1 หน้า
+          window.history.back();
         }
       });
     });

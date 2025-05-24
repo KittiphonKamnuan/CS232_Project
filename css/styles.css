@@ -111,6 +111,200 @@
   gap: var(--spacing-4);
 }
 
+/* Filter Select Styles */
+.filter-select {
+  position: relative;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.filter-select select {
+  width: 100%;
+  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  outline: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.filter-select select:hover {
+  border-color: #9ca3af;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.filter-select select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  transform: translateY(-1px);
+}
+
+.filter-select select:active {
+  transform: translateY(0);
+}
+
+/* Custom dropdown arrow */
+.filter-select::after {
+  content: "";
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #6b7280;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.filter-select:hover::after {
+  border-top-color: #374151;
+}
+
+.filter-select select:focus + .filter-select::after,
+.filter-select:has(select:focus)::after {
+  border-top-color: #3b82f6;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* Alternative icon approach using Font Awesome */
+.filter-select.with-icon::after {
+  content: "\f078";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  border: none;
+  font-size: 0.75rem;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.filter-select.with-icon:hover::after {
+  color: #374151;
+}
+
+.filter-select.with-icon select:focus + .filter-select.with-icon::after,
+.filter-select.with-icon:has(select:focus)::after {
+  color: #3b82f6;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* Option styling (limited support) */
+.filter-select select option {
+  padding: 0.5rem;
+  background: white;
+  color: #374151;
+  font-weight: 400;
+}
+
+.filter-select select option:checked {
+  background: #3b82f6;
+  color: white;
+}
+
+.filter-select select option:hover {
+  background: #f3f4f6;
+}
+
+/* Disabled state */
+.filter-select select:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  border-color: #e5e7eb;
+}
+
+.filter-select:has(select:disabled)::after {
+  border-top-color: #9ca3af;
+}
+
+/* Size variations */
+.filter-select.small select {
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.filter-select.small::after {
+  right: 0.5rem;
+  border-left-width: 4px;
+  border-right-width: 4px;
+  border-top-width: 5px;
+}
+
+.filter-select.large select {
+  padding: 1rem 3rem 1rem 1.25rem;
+  font-size: 1rem;
+}
+
+.filter-select.large::after {
+  right: 1rem;
+  border-left-width: 6px;
+  border-right-width: 6px;
+  border-top-width: 7px;
+}
+
+/* Color variations */
+.filter-select.primary select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.filter-select.success select:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.filter-select.warning select:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.filter-select.danger select:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+/* With label */
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-group label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.filter-group .filter-select {
+  flex: 1;
+}
+
+/* Multiple filters layout */
+.filter-container {
+  display: flex;
+  gap: 1rem;
+  align-items: end;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.filter-container .filter-group {
+  flex: 1;
+  min-width: 200px;
+}
 
 /* ========================================================================
    NOTIFICATIONS

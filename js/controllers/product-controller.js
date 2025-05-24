@@ -314,9 +314,6 @@ class ProductController {
     
     // Setup image gallery functionality
     this.setupImageGallery();
-    
-    // Add custom styles for product details
-    this.addProductDetailsStyles();
   }
   
   /**
@@ -584,27 +581,47 @@ class ProductController {
     addSaleButtons.forEach(button => {
       button.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         const productId = button.getAttribute('data-product-id');
+        console.log('Add sale clicked for product:', productId);
+        
         // เปลี่ยนจาก sale-details.html เป็น product-details.html
         window.location.href = `product-details.html?id=${encodeURIComponent(productId)}`;
       });
     });
     
-    // Share buttons
+    // Share buttons - แก้ไขให้ใช้งานได้
     const shareButtons = document.querySelectorAll('.product-share');
+    console.log('Found share buttons:', shareButtons.length);
+    
     shareButtons.forEach(button => {
       button.addEventListener('click', async (e) => {
         e.stopPropagation();
+        e.preventDefault();
+        
         const productId = button.getAttribute('data-product-id');
+        console.log('Share clicked for product:', productId);
+        
+        // เพิ่ม loading state
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังโหลด...';
+        button.disabled = true;
         
         try {
           const product = await dataService.getProductById(productId);
+          console.log('Product loaded for share:', product);
           this.showShareModal(product);
         } catch (error) {
           console.error('Error loading product for share:', error);
           if (window.InfoHubApp) {
             window.InfoHubApp.showNotification('ไม่สามารถโหลดข้อมูลสินค้าได้', 'error');
+          } else {
+            alert('ไม่สามารถโหลดข้อมูลสินค้าได้ กรุณาลองใหม่อีกครั้ง');
           }
+        } finally {
+          // คืนค่าปุ่มเดิม
+          button.innerHTML = originalText;
+          button.disabled = false;
         }
       });
     });
@@ -614,679 +631,619 @@ class ProductController {
     productCards.forEach(card => {
       card.addEventListener('click', (e) => {
         // Don't navigate if clicking on buttons or links
-        if (e.target.closest('button') || e.target.closest('a')) return;
+        if (e.target.closest('button') || e.target.closest('a')) {
+          console.log('Clicked on button/link, not navigating');
+          return;
+        }
         
         const productId = card.getAttribute('data-product-id');
+        console.log('Card clicked, navigating to product:', productId);
         window.location.href = `product-details.html?id=${encodeURIComponent(productId)}`;
       });
     });
   }
   
   /**
-   * Show share modal for product
+   * Show share modal for product - แก้ไขปัญหา modal หายเร็ว
    * @param {Object} product - Product data
    */
   showShareModal(product) {
-    const template = document.getElementById('share-modal-template');
-    if (!template) {
-      console.error('Share modal template not found');
-      return;
+    console.log('Showing share modal for product:', product);
+    
+    // ลบ modal เก่าถ้ามี
+    const existingModal = document.querySelector('.share-modal-backdrop');
+    if (existingModal) {
+      existingModal.remove();
     }
     
-    const modalContent = template.content.cloneNode(true);
-    const modalElement = document.createElement('div');
-    modalElement.appendChild(modalContent);
-    
-    // Update modal content with product data
-    this.updateModalContent(modalElement, product);
-    
-    document.body.appendChild(modalElement);
-    
-    // Setup modal event listeners
-    this.setupModalEventListeners(modalElement, product);
-    
-    // Show modal with animation
-    setTimeout(() => {
-      const backdrop = modalElement.querySelector('.modal-backdrop');
-      if (backdrop) {
-        backdrop.style.display = 'flex';
-      }
-    }, 10);
-  }
-  
-  /**
-   * Update modal content with product data
-   * @param {HTMLElement} modalElement - Modal element
-   * @param {Object} product - Product data
-   */
-  updateModalContent(modalElement, product) {
-    const previewTitle = modalElement.querySelector('.preview-title');
-    const previewCode = modalElement.querySelector('.preview-code');
-    const previewPrice = modalElement.querySelector('.preview-price');
-    const previewThumbnail = modalElement.querySelector('.preview-thumbnail');
-    
-    if (previewTitle) previewTitle.textContent = product.name;
-    if (previewCode) previewCode.textContent = `รหัสสินค้า: ${product.id}`;
-    if (previewPrice) {
-      previewPrice.textContent = window.InfoHubApp ? 
-        window.InfoHubApp.formatCurrency(product.price) : 
-        `฿${product.price.toLocaleString()}`;
-    }
-    
-    if (previewThumbnail && product.images && product.images.length > 0) {
-      previewThumbnail.innerHTML = `
-        <img src="${this.escapeHtml(product.images[0])}" alt="${this.escapeHtml(product.name)}" 
-             style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;"
-             onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\'fas fa-image\'></i>';">
-      `;
-    }
-  }
-  
-  /**
-   * Setup modal event listeners
-   * @param {HTMLElement} modalElement - Modal element
-   * @param {Object} product - Product data
-   */
-  setupModalEventListeners(modalElement, product) {
-    const closeButtons = modalElement.querySelectorAll('.modal-close');
-    closeButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        if (window.InfoHubApp) {
-          window.InfoHubApp.closeModal(modalElement.querySelector('.modal-backdrop'));
-        } else {
-          modalElement.remove();
-        }
-      });
-    });
-    
-    const sendButton = modalElement.querySelector('#modal-send-button');
-    if (sendButton) {
-      sendButton.addEventListener('click', () => {
-        this.handleSendDocument(modalElement, product);
-      });
-    }
-    
-    // Close on backdrop click
-    const backdrop = modalElement.querySelector('.modal-backdrop');
-    if (backdrop) {
-      backdrop.addEventListener('click', (e) => {
-        if (e.target === backdrop) {
-          if (window.InfoHubApp) {
-            window.InfoHubApp.closeModal(backdrop);
-          } else {
-            modalElement.remove();
-          }
-        }
-      });
-    }
-  }
-  
-  /**
-   * Handle send document action
-   * @param {HTMLElement} modalElement - Modal element
-   * @param {Object} product - Product data
-   */
-  handleSendDocument(modalElement, product) {
-    const selectedDocs = [];
-    const checkboxes = modalElement.querySelectorAll('input[type="checkbox"]:checked');
-    
-    checkboxes.forEach(checkbox => {
-      const label = modalElement.querySelector(`label[for="${checkbox.id}"]`);
-      if (label) {
-        selectedDocs.push(label.textContent.trim());
-      }
-    });
-    
-    const modalBody = modalElement.querySelector('.modal-body');
-    modalBody.innerHTML = `
-      <div class="modal-success">
-        <div class="success-icon">
-          <i class="fas fa-info-circle"></i>
-        </div>
-        <h3>ตัวอย่างการส่งข้อมูล</h3>
-        <p>จะส่งข้อมูล "${this.escapeHtml(product.name)}"</p>
-        ${selectedDocs.length > 0 ? `<p>พร้อมเอกสาร: ${selectedDocs.join(', ')}</p>` : ''}
-        <div class="info-note">
-          <small>ระบบส่งข้อมูลให้ลูกค้าอยู่ระหว่างการพัฒนา<br>
-          ขณะนี้เป็นเพียงการแสดงตัวอย่างเท่านั้น</small>
-        </div>
-      </div>
+    // สร้าง modal ใหม่
+    const modal = document.createElement('div');
+    modal.className = 'share-modal-backdrop';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s ease;
     `;
     
-    setTimeout(() => {
-      if (window.InfoHubApp) {
-        window.InfoHubApp.closeModal(modalElement.querySelector('.modal-backdrop'));
-      } else {
-        modalElement.remove();
-      }
-    }, 3000);
-  }
-  
-  /**
-   * Add custom styles for product details page
-   */
-  addProductDetailsStyles() {
-    const styleId = 'product-details-styles';
-    if (document.getElementById(styleId)) return;
-    
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      .product-details-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 1rem;
-      }
-      
-      .product-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 2rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #e5e7eb;
-      }
-      
-      .product-title {
-        font-size: 1.875rem;
-        font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 0.5rem;
-      }
-      
-      .product-code {
-        color: #6b7280;
-        font-size: 0.875rem;
-        margin-bottom: 0.5rem;
-      }
-      
-      .code-value {
-        font-family: monospace;
-        font-weight: 600;
-        color: #374151;
-      }
-      
-      .product-brand {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.875rem;
-      }
-      
-      .brand-label {
-        color: #6b7280;
-      }
-      
-      .brand-value {
-        font-weight: 600;
-        color: #374151;
-      }
-      
-      .product-actions-header {
-        display: flex;
-        gap: 1rem;
-        flex-shrink: 0;
-      }
-      
-      .btn-large {
-        padding: 0.75rem 1.5rem;
-        font-size: 1rem;
-        font-weight: 600;
-      }
-      
-      .product-content {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 2rem;
-        margin-bottom: 2rem;
-      }
-      
-      .product-gallery {
+    modal.innerHTML = `
+      <div class="share-modal" style="
         background: white;
         border-radius: 0.5rem;
-        padding: 1rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      }
-      
-      .main-image {
-        width: 100%;
-        aspect-ratio: 1;
-        margin-bottom: 1rem;
-        border-radius: 0.5rem;
-        overflow: hidden;
-        background: #f9fafb;
-      }
-      
-      .main-image img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      
-      .main-placeholder {
-        width: 100%;
-        height: 100%;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        color: #9ca3af;
-        font-size: 3rem;
-      }
-      
-      .main-placeholder i {
-        margin-bottom: 0.5rem;
-      }
-      
-      .main-placeholder p {
-        font-size: 1rem;
-        margin: 0;
-      }
-      
-      .image-thumbnails {
-        display: flex;
-        gap: 0.5rem;
-        overflow-x: auto;
-      }
-      
-      .thumbnail {
-        width: 80px;
-        height: 80px;
-        border-radius: 0.375rem;
-        overflow: hidden;
-        cursor: pointer;
-        border: 2px solid transparent;
-        transition: border-color 0.2s;
-        flex-shrink: 0;
-        background: #f9fafb;
-      }
-      
-      .thumbnail.active {
-        border-color: #3b82f6;
-      }
-      
-      .thumbnail img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      
-      .thumb-placeholder {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #9ca3af;
-        font-size: 1.5rem;
-      }
-      
-      .product-info-card {
-        background: white;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
-      }
-      
-      .card-title {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-      
-      .card-title i {
-        color: #3b82f6;
-      }
-      
-      .price-section {
-        margin-bottom: 1.5rem;
-      }
-      
-      .current-price {
-        font-size: 2rem;
-        font-weight: 700;
-        color: #059669;
-        display: block;
-        margin-bottom: 0.5rem;
-      }
-      
-      .price-details {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-      }
-      
-      .original-price {
-        text-decoration: line-through;
-        color: #9ca3af;
-        font-size: 1.125rem;
-      }
-      
-      .discount-badge {
-        background: #fee2e2;
-        color: #dc2626;
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.25rem;
-        font-size: 0.875rem;
-        font-weight: 600;
-      }
-      
-      .stock-section {
-        padding: 1rem;
-        background: #f9fafb;
-        border-radius: 0.5rem;
-      }
-      
-      .stock-status {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-      }
-      
-      .stock-status.in-stock {
-        color: #059669;
-      }
-      
-      .stock-status.out-of-stock {
-        color: #dc2626;
-      }
-      
-      .stock-status i {
-        font-size: 0.5rem;
-      }
-      
-      .stock-count {
-        color: #6b7280;
-        font-size: 0.875rem;
-      }
-      
-      .delivery-info {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-      
-      .delivery-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      
-      .delivery-label {
-        color: #6b7280;
-        font-size: 0.875rem;
-      }
-      
-      .delivery-value {
-        font-weight: 600;
-        color: #374151;
-      }
-      
-      .delivery-highlight {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #059669;
-        font-weight: 600;
-        padding: 0.5rem;
-        background: #f0fdf4;
-        border-radius: 0.375rem;
-      }
-      
-      .specifications {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-      
-      .spec-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #f3f4f6;
-      }
-      
-      .spec-item:last-child {
-        border-bottom: none;
-      }
-      
-      .spec-label {
-        color: #6b7280;
-        font-size: 0.875rem;
-        flex: 1;
-      }
-      
-      .spec-value {
-        font-weight: 600;
-        color: #374151;
-        text-align: right;
-        flex: 1;
-      }
-      
-      .document-links {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-      
-      .doc-link {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.75rem;
-        background: #f9fafb;
-        border-radius: 0.375rem;
-        text-decoration: none;
-        color: #374151;
-        transition: background-color 0.2s;
-      }
-      
-      .doc-link:hover {
-        background: #f3f4f6;
-      }
-      
-      .doc-link i:first-child {
-        color: #dc2626;
-        margin-right: 0.5rem;
-      }
-      
-      .doc-link i:last-child {
-        color: #6b7280;
-        font-size: 0.875rem;
-      }
-      
-      .product-description-card {
-        background: white;
-        border-radius: 0.5rem;
-        padding: 1.5rem;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        margin-bottom: 2rem;
-      }
-      
-      .description-content {
-        color: #6b7280;
-        line-height: 1.6;
-      }
-      
-      .product-actions-mobile {
-        display: none;
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: white;
-        padding: 1rem;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-        gap: 1rem;
-      }
-      
-      .btn-mobile {
-        flex: 1;
-        padding: 0.75rem;
-        font-weight: 600;
-      }
-      
-      /* Responsive Design */
-      @media (max-width: 768px) {
-        .product-header {
-          flex-direction: column;
-          gap: 1rem;
-          align-items: flex-start;
-        }
-        
-        .product-actions-header {
-          display: none;
-        }
-        
-        .product-actions-mobile {
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+      ">
+        <div class="modal-header" style="
           display: flex;
-        }
-        
-        .product-content {
-          grid-template-columns: 1fr;
-          gap: 1rem;
-        }
-        
-        .product-title {
-          font-size: 1.5rem;
-        }
-        
-        .current-price {
-          font-size: 1.75rem;
-        }
-        
-        .product-details-container {
-          padding: 0.5rem;
-          margin-bottom: 80px;
-        }
-      }
-      
-      @media (max-width: 640px) {
-        .delivery-item {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.25rem;
-        }
-        
-        .spec-item {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 0.25rem;
-        }
-        
-        .spec-value {
-          text-align: left;
-        }
-      }
-    `;
-    
-    document.head.appendChild(style);
-  }
-  
-  /**
-   * Show loading state
-   */
-  showLoading() {
-    this.isLoading = true;
-    if (this.loadingIndicator) {
-      this.loadingIndicator.style.display = 'flex';
-    }
-  }
-  
-  /**
-   * Hide loading state
-   */
-  hideLoading() {
-    this.isLoading = false;
-    if (this.loadingIndicator) {
-      this.loadingIndicator.style.display = 'none';
-    }
-  }
-  
-  /**
-   * Show error message
-   * @param {string} message - Error message
-   */
-  showError(message) {
-    if (this.errorMessage) {
-      this.errorMessage.innerHTML = `
-        <div class="error-content">
-          <i class="fas fa-exclamation-triangle"></i>
-          <div class="error-text">
-            <h3>เกิดข้อผิดพลาด</h3>
-            <p>${this.escapeHtml(message)}</p>
-          </div>
-          <button class="btn btn-primary retry-btn">
-            <i class="fas fa-redo"></i> ลองใหม่
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.5rem;
+          border-bottom: 1px solid #e5e7eb;
+        ">
+          <h2 style="font-size: 1.25rem; font-weight: 600; color: #1f2937; margin: 0;">
+            ส่งข้อมูลให้ลูกค้า
+          </h2>
+          <button class="modal-close-btn" type="button" style="
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            color: #6b7280;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            transition: all 0.2s;
+          ">
+            <i class="fas fa-times"></i>
           </button>
         </div>
-      `;
-      this.errorMessage.style.display = 'block';
-    }
-    
-    this.hideEmptyState();
-    if (this.productList) {
-      this.productList.innerHTML = '';
-    }
-  }
-  
-  /**
-   * Show empty state
-   */
-  showEmptyState() {
-    if (this.emptyState) {
-      this.emptyState.style.display = 'block';
-    }
-    if (this.productList) {
-      this.productList.innerHTML = '';
-    }
-  }
-  
-  /**
-   * Hide empty state
-   */
-  hideEmptyState() {
-    if (this.emptyState) {
-      this.emptyState.style.display = 'none';
-    }
-  }
-  
-  /**
-   * Update results information
-   * @param {number} count - Number of results
-   * @param {string} title - Results title
-   */
-  updateResultsInfo(count, title) {
-    if (this.resultsTitle) {
-      this.resultsTitle.textContent = title;
-    }
-    
-    if (this.resultsCount) {
-      this.resultsCount.textContent = `${count} รายการ`;
-    }
-  }
-  
-  /**
-   * Escape HTML to prevent XSS
-   * @param {string} text - Text to escape
-   * @returns {string} - Escaped HTML
-   */
-  escapeHtml(text) {
-    if (typeof text !== 'string') return String(text);
-    
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
+        
+        <div class="modal-body" style="padding: 1.5rem; flex: 1;">
+          <!-- Product Preview -->
+          <div class="product-preview" style="
+            background: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+          ">
+            <div class="preview-image" style="
+              width: 80px;
+              height: 80px;
+              background: #e5e7eb;
+              border-radius: 0.5rem;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: #9ca3af;
+              flex-shrink: 0;
+              overflow: hidden;
+            ">
+              ${product.images && product.images.length > 0 ? `
+                <img src="${this.escapeHtml(product.images[0])}" 
+                     alt="${this.escapeHtml(product.name)}" 
+                     style="width: 100%; height: 100%; object-fit: cover;"
+                     onerror="this.style.display='none'; this.parentElement.innerHTML='<i class=\\'fas fa-image\\'></i>';">
+             ` : '<i class="fas fa-image"></i>'}
+           </div>
+           <div class="preview-info" style="flex: 1;">
+             <h3 style="font-weight: 600; margin: 0 0 0.5rem 0; color: #1f2937;">
+               ${this.escapeHtml(product.name)}
+             </h3>
+             <p style="color: #6b7280; margin: 0 0 0.25rem 0; font-size: 0.875rem;">
+               รหัสสินค้า: ${this.escapeHtml(product.id)}
+             </p>
+             <p style="color: #059669; font-weight: 600; margin: 0; font-size: 1.125rem;">
+               ${window.InfoHubApp ? window.InfoHubApp.formatCurrency(product.price) : '฿' + product.price.toLocaleString()}
+             </p>
+           </div>
+         </div>
+         
+         <!-- Document Selection -->
+         <div style="margin-bottom: 1.5rem;">
+           <h3 style="font-weight: 600; margin-bottom: 1rem; color: #374151;">
+             เลือกข้อมูลที่ต้องการส่ง
+           </h3>
+           
+           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+             <!-- Documents Column -->
+             <div>
+               <h4 style="font-weight: 500; margin-bottom: 0.75rem; color: #374151; font-size: 0.875rem;">
+                 📄 เอกสารประกอบ
+               </h4>
+               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 0.25rem; transition: background 0.2s;" 
+                        onmouseover="this.style.background='#f3f4f6'" 
+                        onmouseout="this.style.background='transparent'">
+                   <input type="checkbox" checked style="cursor: pointer;"> 
+                   <span style="font-size: 0.875rem;">สเปคสินค้า</span>
+                 </label>
+                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 0.25rem; transition: background 0.2s;" 
+                        onmouseover="this.style.background='#f3f4f6'" 
+                        onmouseout="this.style.background='transparent'">
+                   <input type="checkbox" style="cursor: pointer;"> 
+                   <span style="font-size: 0.875rem;">คู่มือการใช้งาน</span>
+                 </label>
+                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 0.25rem; transition: background 0.2s;" 
+                        onmouseover="this.style.background='#f3f4f6'" 
+                        onmouseout="this.style.background='transparent'">
+                   <input type="checkbox" checked style="cursor: pointer;"> 
+                   <span style="font-size: 0.875rem;">เปรียบเทียบรุ่น</span>
+                 </label>
+               </div>
+             </div>
+             
+             <!-- Info Column -->
+             <div>
+               <h4 style="font-weight: 500; margin-bottom: 0.75rem; color: #374151; font-size: 0.875rem;">
+                 💰 ข้อมูลราคาและสต๊อก
+               </h4>
+               <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 0.25rem; transition: background 0.2s;" 
+                        onmouseover="this.style.background='#f3f4f6'" 
+                        onmouseout="this.style.background='transparent'">
+                   <input type="checkbox" checked style="cursor: pointer;"> 
+                   <span style="font-size: 0.875rem;">ราคาปัจจุบัน</span>
+                 </label>
+                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 0.25rem; transition: background 0.2s;" 
+                        onmouseover="this.style.background='#f3f4f6'" 
+                        onmouseout="this.style.background='transparent'">
+                   <input type="checkbox" checked style="cursor: pointer;"> 
+                   <span style="font-size: 0.875rem;">สถานะสต๊อก</span>
+                 </label>
+                 <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem; border-radius: 0.25rem; transition: background 0.2s;" 
+                        onmouseover="this.style.background='#f3f4f6'" 
+                        onmouseout="this.style.background='transparent'">
+                   <input type="checkbox" style="cursor: pointer;"> 
+                   <span style="font-size: 0.875rem;">ข้อมูลการจัดส่ง</span>
+                 </label>
+               </div>
+             </div>
+           </div>
+         </div>
+         
+         <!-- Custom Message -->
+         <div style="margin-bottom: 1.5rem;">
+           <label style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: #374151; font-size: 0.875rem;">
+             💬 ข้อความเพิ่มเติม
+           </label>
+           <textarea 
+             placeholder="เพิ่มข้อความส่วนตัวถึงลูกค้า เช่น 'สินค้านี้เหมาะกับคุณมาก ราคาดีที่สุด!'" 
+             rows="3" 
+             style="
+               width: 100%; 
+               padding: 0.75rem; 
+               border: 1px solid #d1d5db; 
+               border-radius: 0.375rem; 
+               font-size: 0.875rem; 
+               resize: vertical;
+               font-family: inherit;
+             "></textarea>
+         </div>
+         
+         <!-- Info Notice -->
+         <div style="
+           background: #f0f9ff; 
+           border: 1px solid #bfdbfe; 
+           border-radius: 0.5rem; 
+           padding: 1rem;
+           display: flex;
+           align-items: flex-start;
+           gap: 0.75rem;
+         ">
+           <div style="color: #3b82f6; font-size: 1.25rem; flex-shrink: 0; margin-top: 0.125rem;">
+             <i class="fas fa-info-circle"></i>
+           </div>
+           <div>
+             <h4 style="color: #1e40af; font-weight: 600; margin: 0 0 0.5rem 0; font-size: 0.875rem;">
+               ตัวอย่างการแชร์ข้อมูล
+             </h4>
+             <p style="color: #1e40af; margin: 0; font-size: 0.875rem; line-height: 1.4;">
+               ระบบส่งข้อมูลให้ลูกค้าอยู่ระหว่างการพัฒนา ขณะนี้เป็นเพียงการแสดงตัวอย่างเท่านั้น<br>
+               ในอนาคตจะสามารถส่งผ่าน LINE, อีเมล, หรือ SMS ได้
+             </p>
+           </div>
+         </div>
+       </div>
+       
+       <div class="modal-footer" style="
+         display: flex;
+         justify-content: flex-end;
+         gap: 1rem;
+         padding: 1.5rem;
+         border-top: 1px solid #e5e7eb;
+         background: #f9fafb;
+       ">
+         <button type="button" class="cancel-btn" style="
+           padding: 0.75rem 1.5rem;
+           border: 1px solid #d1d5db;
+           background: white;
+           color: #6b7280;
+           border-radius: 0.375rem;
+           cursor: pointer;
+           font-weight: 500;
+           transition: all 0.2s;
+         ">
+           ยกเลิก
+         </button>
+         <button type="button" class="demo-send-btn" style="
+           padding: 0.75rem 1.5rem;
+           border: 1px solid #3b82f6;
+           background: #3b82f6;
+           color: white;
+           border-radius: 0.375rem;
+           cursor: pointer;
+           font-weight: 600;
+           transition: all 0.2s;
+           display: flex;
+           align-items: center;
+           gap: 0.5rem;
+         ">
+           <i class="fas fa-paper-plane"></i>
+           แสดงตัวอย่าง
+         </button>
+       </div>
+     </div>
+   `;
+   
+   // เพิ่ม modal เข้า DOM
+   document.body.appendChild(modal);
+   
+   // แสดง modal พร้อม animation
+   setTimeout(() => {
+     modal.style.opacity = '1';
+     const modalContent = modal.querySelector('.share-modal');
+     if (modalContent) {
+       modalContent.style.transform = 'scale(1)';
+     }
+   }, 10);
+   
+   // Setup event listeners
+   this.setupShareModalListeners(modal, product);
+   
+   // Prevent body scroll
+   document.body.style.overflow = 'hidden';
+ }
+
+ /**
+  * Setup event listeners for share modal
+  * @param {HTMLElement} modal - Modal element
+  * @param {Object} product - Product data
+  */
+ setupShareModalListeners(modal, product) {
+   // Close button
+   const closeBtn = modal.querySelector('.modal-close-btn');
+   if (closeBtn) {
+     closeBtn.addEventListener('click', (e) => {
+       e.preventDefault();
+       e.stopPropagation();
+       this.closeShareModal(modal);
+     });
+   }
+   
+   // Cancel button
+   const cancelBtn = modal.querySelector('.cancel-btn');
+   if (cancelBtn) {
+     cancelBtn.addEventListener('click', (e) => {
+       e.preventDefault();
+       e.stopPropagation();
+       this.closeShareModal(modal);
+     });
+   }
+   
+   // Demo send button
+   const sendBtn = modal.querySelector('.demo-send-btn');
+   if (sendBtn) {
+     sendBtn.addEventListener('click', (e) => {
+       e.preventDefault();
+       e.stopPropagation();
+       this.handleDemoSend(modal, product);
+     });
+   }
+   
+   // Backdrop click (แต่ไม่ให้ปิดง่ายๆ)
+   modal.addEventListener('click', (e) => {
+     if (e.target === modal) {
+       // เพิ่มการยืนยันก่อนปิด
+       if (confirm('คุณต้องการปิดหน้าต่างนี้หรือไม่?')) {
+         this.closeShareModal(modal);
+       }
+     }
+   });
+   
+   // ESC key
+   const handleEsc = (e) => {
+     if (e.key === 'Escape') {
+       this.closeShareModal(modal);
+       document.removeEventListener('keydown', handleEsc);
+     }
+   };
+   document.addEventListener('keydown', handleEsc);
+   
+   // เก็บ reference ของ handler เพื่อลบทีหลัง
+   modal._escHandler = handleEsc;
+   
+   // Hover effects for buttons
+   const buttons = modal.querySelectorAll('button');
+   buttons.forEach(btn => {
+     btn.addEventListener('mouseenter', () => {
+       if (btn.classList.contains('cancel-btn')) {
+         btn.style.background = '#f3f4f6';
+         btn.style.borderColor = '#9ca3af';
+       } else if (btn.classList.contains('demo-send-btn')) {
+         btn.style.background = '#2563eb';
+         btn.style.transform = 'translateY(-1px)';
+       } else if (btn.classList.contains('modal-close-btn')) {
+         btn.style.background = '#f3f4f6';
+         btn.style.color = '#374151';
+       }
+     });
+     
+     btn.addEventListener('mouseleave', () => {
+       if (btn.classList.contains('cancel-btn')) {
+         btn.style.background = 'white';
+         btn.style.borderColor = '#d1d5db';
+       } else if (btn.classList.contains('demo-send-btn')) {
+         btn.style.background = '#3b82f6';
+         btn.style.transform = 'translateY(0)';
+       } else if (btn.classList.contains('modal-close-btn')) {
+         btn.style.background = 'none';
+         btn.style.color = '#6b7280';
+       }
+     });
+   });
+ }
+
+ /**
+  * Close share modal with animation
+  * @param {HTMLElement} modal - Modal element
+  */
+ closeShareModal(modal) {
+   if (!modal || !modal.parentNode) return;
+   
+   const modalContent = modal.querySelector('.share-modal');
+   
+   // Animate out
+   modal.style.opacity = '0';
+   if (modalContent) {
+     modalContent.style.transform = 'scale(0.9)';
+   }
+   
+   setTimeout(() => {
+     if (modal.parentNode) {
+       modal.parentNode.removeChild(modal);
+     }
+     // Restore body scroll
+     document.body.style.overflow = '';
+     
+     // Remove ESC listener
+     if (modal._escHandler) {
+       document.removeEventListener('keydown', modal._escHandler);
+     }
+   }, 300);
+ }
+
+ /**
+  * Handle demo send action
+  * @param {HTMLElement} modal - Modal element  
+  * @param {Object} product - Product data
+  */
+ handleDemoSend(modal, product) {
+   const sendBtn = modal.querySelector('.demo-send-btn');
+   const originalContent = sendBtn.innerHTML;
+   
+   // Show loading
+   sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังส่ง...';
+   sendBtn.disabled = true;
+   sendBtn.style.opacity = '0.7';
+   
+   // Get selected options
+   const selectedDocs = [];
+   const checkboxes = modal.querySelectorAll('input[type="checkbox"]:checked');
+   checkboxes.forEach(checkbox => {
+     const label = checkbox.closest('label');
+     if (label) {
+       const text = label.textContent.trim();
+       if (text) selectedDocs.push(text);
+     }
+   });
+   
+   const customMessage = modal.querySelector('textarea').value.trim();
+   
+   // Simulate API call
+   setTimeout(() => {
+     // Replace modal content with success message
+     const modalBody = modal.querySelector('.modal-body');
+     modalBody.innerHTML = `
+       <div style="text-align: center; padding: 2rem;">
+         <div style="font-size: 4rem; color: #059669; margin-bottom: 1rem;">
+           <i class="fas fa-check-circle"></i>
+         </div>
+         <h3 style="font-size: 1.5rem; font-weight: 600; color: #1f2937; margin-bottom: 1rem;">
+           จำลองการส่งข้อมูลสำเร็จ!
+         </h3>
+         
+         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; text-align: left;">
+           <h4 style="color: #065f46; font-weight: 600; margin-bottom: 1rem;">📋 สรุปข้อมูลที่จะส่ง:</h4>
+           <p style="color: #064e3b; margin-bottom: 0.5rem;"><strong>สินค้า:</strong> ${this.escapeHtml(product.name)}</p>
+           <p style="color: #064e3b; margin-bottom: 0.5rem;"><strong>ราคา:</strong> ${window.InfoHubApp ? window.InfoHubApp.formatCurrency(product.price) : '฿' + product.price.toLocaleString()}</p>
+           
+           ${selectedDocs.length > 0 ? `
+             <p style="color: #064e3b; margin-bottom: 0.5rem;"><strong>เอกสารที่เลือก:</strong></p>
+             <ul style="color: #064e3b; margin: 0; padding-left: 1.5rem;">
+               ${selectedDocs.map(doc => `<li>${this.escapeHtml(doc)}</li>`).join('')}
+             </ul>
+           ` : ''}
+           
+           ${customMessage ? `
+             <p style="color: #064e3b; margin-top: 1rem; margin-bottom: 0.5rem;"><strong>ข้อความ:</strong></p>
+             <p style="color: #064e3b; font-style: italic; background: white; padding: 0.75rem; border-radius: 0.25rem; margin: 0;">
+               "${this.escapeHtml(customMessage)}"
+             </p>
+           ` : ''}
+         </div>
+         
+         <div style="background: #fffbeb; border: 1px solid #fed7aa; border-radius: 0.5rem; padding: 1rem;">
+           <p style="color: #92400e; font-size: 0.875rem; margin: 0;">
+             <i class="fas fa-info-circle"></i>
+             ระบบส่งข้อมูลจริงอยู่ระหว่างการพัฒนา<br>
+             ในอนาคตจะสามารถส่งผ่าน LINE, อีเมล หรือ SMS ได้
+           </p>
+         </div>
+       </div>
+     `;
+     
+     // Update footer
+     const footer = modal.querySelector('.modal-footer');
+     footer.innerHTML = `
+       <button type="button" class="close-success-btn" style="
+         padding: 0.75rem 2rem;
+         border: none;
+         background: #059669;
+         color: white;
+         border-radius: 0.375rem;
+         cursor: pointer;
+         font-weight: 600;
+         transition: all 0.2s;
+       ">
+         <i class="fas fa-check"></i> เรียบร้อย
+       </button>
+     `;
+     
+     // Setup close button
+     const closeSuccessBtn = footer.querySelector('.close-success-btn');
+     closeSuccessBtn.addEventListener('click', () => {
+       this.closeShareModal(modal);
+     });
+     
+     closeSuccessBtn.addEventListener('mouseenter', () => {
+       closeSuccessBtn.style.background = '#047857';
+       closeSuccessBtn.style.transform = 'translateY(-1px)';
+     });
+     
+     closeSuccessBtn.addEventListener('mouseleave', () => {
+       closeSuccessBtn.style.background = '#059669';
+       closeSuccessBtn.style.transform = 'translateY(0)';
+     });
+     
+     // Auto close after 5 seconds
+     setTimeout(() => {
+       this.closeShareModal(modal);
+     }, 5000);
+     
+   }, 1500); // Simulate 1.5 second API call
+ }
+ 
+ /**
+  * Show loading state
+  */
+ showLoading() {
+   this.isLoading = true;
+   if (this.loadingIndicator) {
+     this.loadingIndicator.style.display = 'flex';
+   }
+ }
+ 
+ /**
+  * Hide loading state
+  */
+ hideLoading() {
+   this.isLoading = false;
+   if (this.loadingIndicator) {
+     this.loadingIndicator.style.display = 'none';
+   }
+ }
+ 
+ /**
+  * Show error message
+  * @param {string} message - Error message
+  */
+ showError(message) {
+   if (this.errorMessage) {
+     this.errorMessage.innerHTML = `
+       <div class="error-content">
+         <i class="fas fa-exclamation-triangle"></i>
+         <div class="error-text">
+           <h3>เกิดข้อผิดพลาด</h3>
+           <p>${this.escapeHtml(message)}</p>
+         </div>
+         <button class="btn btn-primary retry-btn">
+           <i class="fas fa-redo"></i> ลองใหม่
+         </button>
+       </div>
+     `;
+     this.errorMessage.style.display = 'block';
+   }
+   
+   this.hideEmptyState();
+   if (this.productList) {
+     this.productList.innerHTML = '';
+   }
+ }
+ 
+ /**
+  * Show empty state
+  */
+ showEmptyState() {
+   if (this.emptyState) {
+     this.emptyState.style.display = 'block';
+   }
+   if (this.productList) {
+     this.productList.innerHTML = '';
+   }
+ }
+ 
+ /**
+  * Hide empty state
+  */
+ hideEmptyState() {
+   if (this.emptyState) {
+     this.emptyState.style.display = 'none';
+   }
+ }
+ 
+ /**
+  * Update results information
+  * @param {number} count - Number of results
+  * @param {string} title - Results title
+  */
+ updateResultsInfo(count, title) {
+   if (this.resultsTitle) {
+     this.resultsTitle.textContent = title;
+   }
+   
+   if (this.resultsCount) {
+     this.resultsCount.textContent = `${count} รายการ`;
+   }
+ }
+ 
+ /**
+  * Escape HTML to prevent XSS
+  * @param {string} text - Text to escape
+  * @returns {string} - Escaped HTML
+  */
+ escapeHtml(text) {
+   if (typeof text !== 'string') return String(text);
+   
+   const div = document.createElement('div');
+   div.textContent = text;
+   return div.innerHTML;
+ }
 }
 
 // Initialize product controller
