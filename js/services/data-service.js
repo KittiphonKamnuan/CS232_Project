@@ -9,7 +9,8 @@
 // กำหนด API Endpoints
 const API_ENDPOINTS = {
   PRODUCTS: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetAllProducts',
-  CUSTOMERS: 'https://api.infohub360.com/customers', // จะต้องเพิ่ม endpoint จริงในอนาคต
+  CUSTOMERS: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetAllCustomers',
+  CREATE_CUSTOMER: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/CreateCustomer',
   SALES: 'https://api.infohub360.com/sales', // จะต้องเพิ่ม endpoint จริงในอนาคต
   DOCUMENTS: 'https://api.infohub360.com/documents' // จะต้องเพิ่ม endpoint จริงในอนาคต
 };
@@ -177,10 +178,30 @@ class DataService {
    * @returns {Promise<Array>} - ข้อมูลลูกค้าทั้งหมด
    */
   async getCustomers(filters = {}) {
-    // Skip API call since customers API is not ready
-    // Return empty array for now
-    console.log('Customers API not available - returning empty array');
-    return [];
+    try {
+      const queryParams = new URLSearchParams(filters);
+      const url = queryParams.toString().length > 0
+        ? `${API_ENDPOINTS.CUSTOMERS}?${queryParams}`
+        : API_ENDPOINTS.CUSTOMERS;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch customers: HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        return data.map(c => this._formatCustomer(c));
+      } else if (typeof data === 'object' && data !== null) {
+        return [this._formatCustomer(data)];
+      }
+      
+      return [];
+    } catch (err) {
+      console.error('Error loading customers:', err);
+      throw new Error('ไม่สามารถโหลดข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
+    }
   }
   
   /**
@@ -189,9 +210,200 @@ class DataService {
    * @returns {Promise<Object>} - ข้อมูลลูกค้า
    */
   async getCustomerById(customerId) {
-    // Skip API call since customers API is not ready
-    console.log('Customers API not available - customer ID:', customerId);
-    throw new Error('ระบบลูกค้าอยู่ระหว่างการพัฒนา');
+    try {
+      console.log('Getting customer by ID:', customerId);
+      
+      // เรียก API เพื่อดึงข้อมูลลูกค้าตาม ID
+      const url = `${API_ENDPOINTS.CUSTOMERS}?customer_id=${encodeURIComponent(customerId)}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch customer: HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('API Response for customer ID:', customerId, data);
+      
+      // ถ้า API ส่งข้อมูลเป็น array ให้หาลูกค้าที่ตรงกับ ID
+      if (Array.isArray(data)) {
+        const customer = data.find(c => 
+          (c.customer_id && c.customer_id === customerId) || 
+          (c.id && c.id === customerId)
+        );
+        if (customer) {
+          console.log('Customer found in array:', customer);
+          return this._formatCustomer(customer);
+        } else {
+          // ถ้าไม่เจอใน array ให้หาจากลูกค้าทั้งหมด
+          const allCustomers = await this.getCustomers();
+          const foundCustomer = allCustomers.find(c => c.id === customerId);
+          if (foundCustomer) {
+            console.log('Customer found in all customers:', foundCustomer);
+            return foundCustomer;
+          }
+        }
+      } else if (data && typeof data === 'object') {
+        // ถ้า API ส่งข้อมูลเป็น object เดียว
+        const customerIdFromData = data.customer_id || data.id;
+        if (customerIdFromData === customerId) {
+          console.log('Customer found as single object:', data);
+          return this._formatCustomer(data);
+        }
+      }
+      
+      throw new Error('ไม่พบข้อมูลลูกค้า');
+    } catch (err) {
+      console.error('Error loading customer by ID:', err);
+      // ถ้าเกิดข้อผิดพลาด ลองหาจากลูกค้าทั้งหมด
+      try {
+        console.log('Fallback: searching in all customers');
+        const allCustomers = await this.getCustomers();
+        const customer = allCustomers.find(c => c.id === customerId);
+        if (customer) {
+          console.log('Customer found in fallback search:', customer);
+          return customer;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback search also failed:', fallbackError);
+      }
+      
+      throw new Error('ไม่สามารถโหลดข้อมูลลูกค้าได้ กรุณาตรวจสอบรหัสลูกค้าและลองใหม่อีกครั้ง');
+    }
+  }
+  
+  /**
+   * สร้างลูกค้าใหม่
+   * @param {Object} customerData - ข้อมูลลูกค้าใหม่
+   * @returns {Promise<Object>} - ข้อมูลลูกค้าที่สร้างแล้ว
+   */
+  async createCustomer(customerData) {
+    try {
+      console.log('Creating new customer:', customerData);
+      
+      // Validate required fields
+      if (!customerData.fname || !customerData.name) {
+        throw new Error('กรุณากรอกชื่อลูกค้า');
+      }
+      
+      if (!customerData.tel) {
+        throw new Error('กรุณากรอกเบอร์โทรศัพท์');
+      }
+      
+      // Prepare data for API - match the exact JSON format from the screenshot
+      const apiData = {
+        "fname": customerData.fname || "",
+        "lname": customerData.name || "", 
+        "tel": customerData.tel || "",
+        "email": customerData.email || "",
+        "address": customerData.address || "",
+        "status": customerData.status || "interested",
+        "note": customerData.note || "customer1 like this product"
+      };
+      
+      console.log('API Data to send:', JSON.stringify(apiData, null, 2));
+      
+      const response = await fetch(API_ENDPOINTS.CREATE_CUSTOMER, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(apiData)
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      // Get response text first to debug
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      if (!response.ok) {
+        let errorMessage = `Failed to create customer: HTTP ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.warn('Could not parse error response:', parseError);
+          errorMessage = `Server error: ${responseText}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Parse response
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.warn('Could not parse success response:', parseError);
+        result = { message: responseText };
+      }
+      
+      console.log('Customer created successfully:', result);
+      
+      // Return formatted customer data
+      return this._formatCustomer({
+        ...apiData,
+        customer_id: result.customerId || result.customer_id || `CUST_${Date.now()}`,
+        created_at: new Date().toISOString(),
+        id: result.customerId || result.customer_id || `CUST_${Date.now()}`
+      });
+      
+    } catch (err) {
+      console.error('Error creating customer:', err);
+      
+      // Provide more specific error messages
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+      }
+      
+      throw new Error(err.message || 'ไม่สามารถสร้างลูกค้าใหม่ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  }
+  
+  /**
+   * ค้นหาลูกค้าด้วย parameters ต่างๆ
+   * @param {Object} searchParams - พารามิเตอร์ในการค้นหา
+   * @returns {Promise<Array>} - รายการลูกค้าที่ค้นพบ
+   */
+  async searchCustomers(searchParams) {
+    try {
+      const allCustomers = await this.getCustomers();
+      
+      if (!searchParams || Object.keys(searchParams).length === 0) {
+        return allCustomers;
+      }
+      
+      let filteredCustomers = allCustomers;
+      
+      // กรองตาม search keyword
+      if (searchParams.search && searchParams.search.trim()) {
+        const searchTerm = searchParams.search.trim().toLowerCase();
+        filteredCustomers = filteredCustomers.filter(customer => 
+          customer.name.toLowerCase().includes(searchTerm) ||
+          customer.id.toLowerCase().includes(searchTerm) ||
+          (customer.tel && customer.tel.includes(searchTerm)) ||
+          (customer.email && customer.email.toLowerCase().includes(searchTerm))
+        );
+      }
+      
+      // กรองตาม status
+      if (searchParams.status && searchParams.status.trim()) {
+        const statusTerm = searchParams.status.trim().toLowerCase();
+        filteredCustomers = filteredCustomers.filter(customer => 
+          customer.status && customer.status.toLowerCase().includes(statusTerm)
+        );
+      }
+      
+      return filteredCustomers;
+    } catch (err) {
+      console.error('Error searching customers:', err);
+      throw new Error('ไม่สามารถค้นหาลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
+    }
   }
   
   /**
@@ -371,6 +583,48 @@ class DataService {
    * ===================================
    */
   
+  /**
+   * จัดรูปแบบข้อมูลลูกค้าจาก API
+   * @private
+   * @param {Object} apiCustomer - ข้อมูลลูกค้าจาก API
+   * @returns {Object} - ข้อมูลลูกค้าที่จัดรูปแบบแล้ว
+   */
+  _formatCustomer(apiCustomer) {
+    // จัดการกับข้อมูลที่อาจจะมีชื่อฟิลด์ต่างกัน
+    const customerId = apiCustomer.customer_id || apiCustomer.id;
+    const firstName = apiCustomer.customer_fname || apiCustomer.fname || apiCustomer.first_name || '';
+    const lastName = apiCustomer.customer_lname || apiCustomer.name || apiCustomer.last_name || '';
+    const fullName = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || 'ไม่ระบุชื่อ');
+    
+    return {
+      id: customerId,
+      firstName: firstName,
+      lastName: lastName,
+      name: fullName,
+      tel: apiCustomer.customer_tel || apiCustomer.tel || apiCustomer.phone || '',
+      email: apiCustomer.customer_email || apiCustomer.email || '',
+      address: apiCustomer.customer_address || apiCustomer.address || '',
+      status: apiCustomer.customer_status || apiCustomer.status || 'interested',
+      note: apiCustomer.note || '',
+      created_at: apiCustomer.created_at || new Date().toISOString(),
+      updated_at: apiCustomer.updated_at || new Date().toISOString(),
+      
+      // ข้อมูลเพิ่มเติม
+      totalOrders: parseInt(apiCustomer.totalOrders) || 0,
+      totalSpent: parseFloat(apiCustomer.totalSpent) || 0,
+      lastOrderDate: apiCustomer.lastOrderDate || null,
+      tags: apiCustomer.tags || [],
+      
+      // การติดต่อล่าสุด
+      lastContact: apiCustomer.lastContact || null,
+      contactMethod: apiCustomer.contactMethod || 'phone',
+      
+      // สถานะลูกค้า
+      priority: apiCustomer.priority || 'normal', // low, normal, high
+      source: apiCustomer.source || 'website' // website, referral, social, etc.
+    };
+  }
+
   /**
    * จัดรูปแบบข้อมูลสินค้าจาก API
    * @private

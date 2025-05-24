@@ -10,6 +10,14 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body class="bg-gray-100">
+  <!-- App Preloader -->
+  <div id="app-preloader" class="app-preloader">
+    <div class="spinner-container">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>กำลังโหลด InfoHub 360...</p>
+    </div>
+  </div>
+
   <div class="flex flex-col h-screen">
     <!-- Top Navigation -->
     <nav class="navbar">
@@ -89,27 +97,26 @@
               <input type="text" placeholder="ค้นหาลูกค้า..." id="keyword">
               <i class="fas fa-search"></i>
             </div>
-            <div>
+            <div class="filter-select">
               <select id="status-select">
-                <option value="">ทั้งหมด</option>
-                <option value="สอบถามข้อมูล">สอบถามข้อมูล</option>
-                <option value="ลูกค้าสนใจ">ลูกค้าสนใจ</option>
-                <option value="ส่งใบเสนอราคา">รอเสนอราคา</option>
-                <option value="ต่อรองราคา">รอตัดสินใจ</option>
-                <option value="ยืนยันการสั่งซื้อ">ยืนยันการสั่งซื้อ</option>
-                <option value="ส่งมอบสินค้า">ส่งมอบสินค้า</option>
-                <option value="บริการหลังการขาย">บริการหลังการขาย</option>
+                <option value="">ทุกสถานะ</option>
+                <option value="interested">ลูกค้าสนใจสินค้า</option>
+                <option value="confirmed">ยืนยันการสั่งซื้อ</option>
+                <option value="pending_payment">รอชำระเงิน</option>
+                <option value="paid">ชำระเงินแล้ว</option>
+                <option value="delivered">ส่งมอบสินค้า</option>
+                <option value="after_sales">บริการหลังการขาย</option>
               </select>
             </div>
-            <div>
+            <div class="search-actions">
               <button type="submit" class="btn btn-primary" id="search-button">
-                ค้นหา
+                <i class="fas fa-search"></i> ค้นหา
               </button>
               <button type="button" class="btn btn-outline" id="clear-button">
-                ล้างการค้นหา
+                <i class="fas fa-times"></i> ล้าง
               </button>
             </div>
-            <div>
+            <div class="add-customer-section">
               <button class="btn btn-success" id="add-customer-button">
                 <i class="fas fa-plus"></i> เพิ่มลูกค้า
               </button>
@@ -122,6 +129,7 @@
           <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
           </div>
+          <p>กำลังโหลดข้อมูลลูกค้า...</p>
         </div>
 
         <!-- Error Message -->
@@ -138,24 +146,115 @@
           </div>
         </div>
 
-        <div class="card">
-          <h2>รายชื่อลูกค้า</h2>
+        <!-- Main Content Card -->
+        <div class="card main-card">
+          <div class="card-header">
+            <h2 id="results-title">รายการลูกค้าทั้งหมด</h2>
+            <div class="results-info">
+              <span id="results-count">กำลังโหลด...</span>
+            </div>
+          </div>
 
+          <!-- Customer List Container -->
           <div class="table-container">
             <div id="customer-list">
               <!-- จะเติมข้อมูลด้วย JavaScript (customer-controller.js) -->
             </div>
           </div>
 
+          <!-- Pagination -->
           <div id="pagination-container">
             <!-- จะเติมข้อมูลด้วย JavaScript (customer-controller.js) -->
+          </div>
+
+          <!-- Empty State -->
+          <div id="empty-state" class="empty-state" style="display: none;">
+            <div class="empty-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <h3>ไม่พบลูกค้า</h3>
+            <p>ไม่พบลูกค้าที่ตรงกับเงื่อนไขการค้นหา กรุณาลองค้นหาด้วยคำอื่น</p>
+            <button class="btn btn-primary" id="add-first-customer">
+              <i class="fas fa-plus"></i> เพิ่มลูกค้าแรก
+            </button>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Load Scripts -->
+  <!-- Add Customer Modal Template -->
+  <template id="add-customer-modal-template">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>เพิ่มลูกค้าใหม่</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="new-fname" class="form-label">ชื่อ *</label>
+            <input type="text" id="new-fname" class="form-input" placeholder="กรอกชื่อ" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-name" class="form-label">นามสกุล *</label>
+            <input type="text" id="new-name" class="form-input" placeholder="กรอกนามสกุล" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-tel" class="form-label">เบอร์โทรศัพท์ *</label>
+            <input type="tel" id="new-tel" class="form-input" placeholder="กรอกเบอร์โทรศัพท์" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-email" class="form-label">อีเมล</label>
+            <input type="email" id="new-email" class="form-input" placeholder="กรอกอีเมล">
+          </div>
+          
+          <div class="form-group">
+            <label for="new-address" class="form-label">ที่อยู่</label>
+            <textarea id="new-address" class="form-input" rows="3" placeholder="กรอกที่อยู่"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-status" class="form-label">สถานะ</label>
+            <select id="new-status" class="form-input">
+              <option value="interested">ลูกค้าสนใจสินค้า</option>
+              <option value="confirmed">ยืนยันการสั่งซื้อ</option>
+              <option value="pending_payment">รอชำระเงิน</option>
+              <option value="paid">ชำระเงินแล้ว</option>
+              <option value="delivered">ส่งมอบสินค้า</option>
+              <option value="after_sales">บริการหลังการขาย</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-note" class="form-label">หมายเหตุ</label>
+            <textarea id="new-note" class="form-input" rows="3" placeholder="กรอกหมายเหตุเพิ่มเติม"></textarea>
+          </div>
+          
+          <small class="form-note">* ข้อมูลที่จำเป็นต้องกรอก</small>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-add-customer">
+            <i class="fas fa-save"></i> บันทึกข้อมูลลูกค้า
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- JavaScript Files -->
+  <script type="module" src="js/services/data-service.js"></script>
+  <script src="js/scripts.js"></script>
   <script type="module" src="js/controllers/customer-controller.js"></script>
   <script type="module" src="js/auth-guard.js" defer></script>
 </body>

@@ -10,6 +10,14 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body class="bg-gray-100">
+  <!-- App Preloader -->
+  <div id="app-preloader" class="app-preloader">
+    <div class="spinner-container">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>กำลังโหลด InfoHub 360...</p>
+    </div>
+  </div>
+
   <div class="flex flex-col h-screen">
     <!-- Top Navigation -->
     <nav class="navbar">
@@ -53,21 +61,17 @@
       <!-- Sidebar -->
       <div class="sidebar">
         <div class="sidebar-menu">
-          <a href="index.html" class="menu-item" data-tab="search">
+          <a href="index.html" class="menu-item">
             <i class="fas fa-search"></i>
             <span>ค้นหาสินค้า</span>
           </a>
-          <a href="customer-list.html" class="menu-item active" data-tab="customers">
+          <a href="customer-list.html" class="menu-item active">
             <i class="fas fa-users"></i>
             <span>ลูกค้าของฉัน</span>
           </a>
-          <a href="sales-report.html" class="menu-item" data-tab="sales">
+          <a href="sales-report.html" class="menu-item">
             <i class="fas fa-chart-line"></i>
             <span>ติดตามการขาย</span>
-          </a>
-          <a href="document-viewer.html" class="menu-item" data-tab="documents">
-            <i class="fas fa-file-pdf"></i>
-            <span>เอกสาร</span>
           </a>
         </div>
         <div class="sidebar-footer">
@@ -75,7 +79,7 @@
             <i class="fas fa-cog"></i>
             <span>ตั้งค่า</span>
           </a>
-          <a href="login.html" class="menu-item">
+          <a href="login.html" class="menu-item logout-link">
             <i class="fas fa-sign-out-alt"></i>
             <span>ออกจากระบบ</span>
           </a>
@@ -92,14 +96,26 @@
         </div>
         
         <!-- Loading Indicator -->
-        <div id="loading-indicator" class="loading-overlay">
+        <div id="loading-indicator" class="loading-overlay" style="display: none;">
           <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
           </div>
+          <p>กำลังโหลดข้อมูลลูกค้า...</p>
         </div>
         
         <!-- Error Message -->
-        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="error-message" class="error-message" style="display: none;">
+          <div class="error-content">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="error-text">
+              <h3>เกิดข้อผิดพลาด</h3>
+              <p>ไม่สามารถโหลดข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง</p>
+            </div>
+            <button class="btn btn-primary retry-btn" id="retry-button">
+              <i class="fas fa-redo"></i> ลองใหม่
+            </button>
+          </div>
+        </div>
         
         <!-- Customer Details Container -->
         <div id="customer-details" class="customer-details-container">
@@ -108,9 +124,466 @@
       </div>
     </div>
   </div>
-  
-  <!-- Load Scripts -->
+
+  <!-- Edit Customer Modal Template -->
+  <template id="edit-customer-modal-template">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>แก้ไขข้อมูลลูกค้า</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="edit-fname" class="form-label">ชื่อ</label>
+            <input type="text" id="edit-fname" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-name" class="form-label">นามสกุล</label>
+            <input type="text" id="edit-name" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-tel" class="form-label">เบอร์โทรศัพท์</label>
+            <input type="tel" id="edit-tel" class="form-input" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-email" class="form-label">อีเมล</label>
+            <input type="email" id="edit-email" class="form-input">
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-address" class="form-label">ที่อยู่</label>
+            <textarea id="edit-address" class="form-input" rows="3"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-status" class="form-label">สถานะ</label>
+            <select id="edit-status" class="form-input">
+              <option value="สอบถามข้อมูล">สอบถามข้อมูล</option>
+              <option value="ลูกค้าสนใจ">ลูกค้าสนใจ</option>
+              <option value="ส่งใบเสนอราคา">ส่งใบเสนอราคา</option>
+              <option value="ต่อรองราคา">ต่อรองราคา</option>
+              <option value="ยืนยันการสั่งซื้อ">ยืนยันการสั่งซื้อ</option>
+              <option value="ส่งมอบสินค้า">ส่งมอบสินค้า</option>
+              <option value="บริการหลังการขาย">บริการหลังการขาย</option>
+              <option value="interested">ลูกค้าสนใจสินค้า</option>
+              <option value="pending">รอดำเนินการ</option>
+              <option value="confirmed">ยืนยันการสั่งซื้อ</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-note" class="form-label">หมายเหตุ</label>
+            <textarea id="edit-note" class="form-input" rows="3"></textarea>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-edit-customer">
+            <i class="fas fa-save"></i> บันทึกการเปลี่ยนแปลง
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Sale Confirmation Modal Template -->
+  <template id="sale-confirmation-modal-template">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>สร้างการขายใหม่</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="confirmation-content">
+            <div class="confirmation-icon">
+              <i class="fas fa-shopping-cart"></i>
+            </div>
+            <h3>เริ่มสร้างการขายใหม่</h3>
+            <p>คุณต้องการสร้างการขายใหม่สำหรับลูกค้านี้หรือไม่?</p>
+            
+            <div class="customer-summary">
+              <div class="summary-icon">
+                <i class="fas fa-user"></i>
+              </div>
+              <div class="summary-info">
+                <h4 class="summary-title">ชื่อลูกค้า</h4>
+                <p class="summary-code">รหัสลูกค้า: </p>
+                <p class="summary-contact">เบอร์โทร: </p>
+              </div>
+            </div>
+            
+            <div class="options-list">
+              <div class="option-item">
+                <input type="radio" id="create-with-customer" name="sale-option" value="with-customer" checked>
+                <label for="create-with-customer">
+                  <strong>สร้างการขายสำหรับลูกค้านี้</strong>
+                  <small>เริ่มต้นการขายใหม่พร้อมข้อมูลลูกค้า</small>
+                </label>
+              </div>
+              <div class="option-item">
+                <input type="radio" id="create-empty-sale" name="sale-option" value="empty">
+                <label for="create-empty-sale">
+                  <strong>สร้างการขายว่าง</strong>
+                  <small>สร้างการขายใหม่โดยไม่เชื่อมโยงลูกค้า</small>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-create-sale">
+            <i class="fas fa-check"></i> สร้างการขาย
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- JavaScript Files -->
+  <script type="module" src="js/services/data-service.js"></script>
+  <script src="js/scripts.js"></script>
   <script type="module" src="js/controllers/customer-controller.js"></script>
   <script type="module" src="js/auth-guard.js" defer></script>
+
+  <!-- Additional Styles for Customer Details -->
+  <style>
+    /* App Preloader */
+    .app-preloader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    
+    .spinner-container {
+      text-align: center;
+    }
+    
+    .spinner-container i {
+      font-size: 2rem;
+      color: #3b82f6;
+      margin-bottom: 1rem;
+    }
+    
+    .spinner-container p {
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+
+    /* Loading and Error States */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    
+    .loading-spinner {
+      font-size: 2rem;
+      color: #3b82f6;
+      margin-bottom: 1rem;
+    }
+    
+    .error-message {
+      margin: 2rem 0;
+      padding: 2rem;
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .error-content {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .error-content i {
+      color: #dc2626;
+      font-size: 2rem;
+    }
+    
+    .error-text {
+      flex: 1;
+    }
+    
+    .error-text h3 {
+      color: #dc2626;
+      margin-bottom: 0.5rem;
+    }
+    
+    .error-text p {
+      color: #6b7280;
+    }
+
+    /* Back Button */
+    .back-button {
+      margin-bottom: 1.5rem;
+    }
+    
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: #3b82f6;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    
+    .btn-link:hover {
+      color: #1d4ed8;
+      text-decoration: underline;
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+      display: block;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #d1d5db;
+      border-radius: 0.375rem;
+      font-size: 0.875rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .form-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Modal Styles */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .modal {
+      background: white;
+      border-radius: 0.5rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .modal-header h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin: 0;
+    }
+    
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      color: #6b7280;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+      transition: color 0.2s;
+    }
+    
+    .modal-close:hover {
+      color: #374151;
+    }
+    
+    .modal-body {
+      padding: 1.5rem;
+      flex: 1;
+    }
+    
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      padding: 1.5rem;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    /* Confirmation Modal Styles */
+    .confirmation-content {
+      text-align: center;
+    }
+    
+    .confirmation-icon {
+      font-size: 3rem;
+      color: #3b82f6;
+      margin-bottom: 1rem;
+    }
+    
+    .customer-summary {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: #f9fafb;
+      border-radius: 0.5rem;
+      margin: 1.5rem 0;
+      text-align: left;
+    }
+    
+    .summary-icon {
+      width: 60px;
+      height: 60px;
+      background: #e5e7eb;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    
+    .summary-info {
+      flex: 1;
+    }
+    
+    .summary-title {
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 0.25rem;
+    }
+    
+    .summary-code {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin-bottom: 0.25rem;
+    }
+    
+    .summary-contact {
+      font-size: 0.875rem;
+      color: #6b7280;
+    }
+    
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      text-align: left;
+      margin-top: 1.5rem;
+    }
+    
+    .option-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    
+    .option-item:hover {
+      border-color: #3b82f6;
+      background-color: #f8fafc;
+    }
+    
+    .option-item input[type="radio"] {
+      margin-right: 0.75rem;
+      accent-color: #3b82f6;
+    }
+    
+    .option-item label {
+      cursor: pointer;
+      display: block;
+    }
+    
+    .option-item label strong {
+      display: block;
+      color: #374151;
+      margin-bottom: 0.25rem;
+    }
+    
+    .option-item label small {
+      color: #6b7280;
+      font-size: 0.875rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .modal {
+        width: 95%;
+      }
+      
+      .modal-header,
+      .modal-body,
+      .modal-footer {
+        padding: 1rem;
+      }
+      
+      .customer-summary {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .summary-icon {
+        width: 50px;
+        height: 50px;
+      }
+    }
+  </style>
+
 </body>
 </html>

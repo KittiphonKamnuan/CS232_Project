@@ -1,74 +1,119 @@
 /**
- * customer-controller.js
+ * InfoHub 360 - Customer Controller
+ * 
  * Controller สำหรับจัดการข้อมูลลูกค้า
- * ปรับปรุงให้ใช้ dataService แทนการเรียก API จริง
+ * ทำงานร่วมกับ scripts.js และ data-service.js
+ * อัปเดต: ใช้ API จริงจาก AWS Lambda
  */
 
 import dataService from '../services/data-service.js';
 
 class CustomerController {
   constructor() {
-    // สถานะโหลดเริ่มต้น
+    this.customers = [];
+    this.currentSearchParams = {};
     this.isLoading = false;
+    this.currentCustomer = null; // สำหรับหน้า customer details
     
-    // DOM Elements
-    this.loadingIndicator = document.getElementById('loading-indicator');
-    this.errorMessage = document.getElementById('error-message');
-    
-    // ตรวจสอบว่าเป็นหน้า customer-list หรือ customer-details
-    this.isCustomerListPage = window.location.pathname.includes('customer-list.html');
-    this.isCustomerDetailsPage = window.location.pathname.includes('customer-details.html');
-    
-    // Element ที่เกี่ยวข้องกับรายการลูกค้า
-    this.customerListContainer = document.getElementById('customer-list');
-    this.paginationContainer = document.getElementById('pagination-container');
-    
-    // Element ที่เกี่ยวข้องกับรายละเอียดลูกค้า
-    this.customerDetailsContainer = document.getElementById('customer-details');
-    
-    // Element สำหรับการค้นหา
-    this.searchForm = document.getElementById('search-form');
-    this.searchButton = document.getElementById('search-button');
-    this.clearButton = document.getElementById('clear-button');
-    this.keywordInput = document.getElementById('keyword');
-    this.statusSelect = document.getElementById('status-select');
-    
-    // Element สำหรับการเพิ่มลูกค้า
-    this.addCustomerButton = document.getElementById('add-customer-button');
-    
-    // ตัวแปรสำหรับการแบ่งหน้า
+    // Pagination
     this.currentPage = 1;
     this.itemsPerPage = 10;
     this.totalPages = 1;
     
-    // ตัวแปรสำหรับการกรองข้อมูล
+    // Filters
     this.filters = {
       search: '',
       status: ''
     };
     
-    // Initialize
-    this.init();
+    // DOM Elements
+    this.customerList = document.getElementById('customer-list');
+    this.customerListContainer = document.getElementById('customer-list');
+    this.resultsTitle = document.getElementById('results-title');
+    this.resultsCount = document.getElementById('results-count');
+    this.loadingIndicator = document.getElementById('loading-indicator');
+    this.errorMessage = document.getElementById('error-message');
+    this.emptyState = document.getElementById('empty-state');
+    this.customerDetailsContainer = document.getElementById('customer-details');
+    this.paginationContainer = document.getElementById('pagination-container');
+    
+    // Search elements
+    this.searchForm = document.getElementById('search-form');
+    this.searchButton = document.getElementById('search-button');
+    this.clearButton = document.getElementById('clear-button');
+    this.keywordInput = document.getElementById('keyword');
+    this.statusSelect = document.getElementById('status-select');
+    this.addCustomerButton = document.getElementById('add-customer-button');
+    
+    // Page detection
+    this.isCustomerListPage = window.location.pathname.includes('customer-list.html');
+    this.isCustomerDetailsPage = window.location.pathname.includes('customer-details.html');
+    
+    // Initialize based on current page
+    this.initializePage();
   }
   
   /**
-   * ฟังก์ชันเริ่มต้นการทำงาน
+   * Initialize based on current page
    */
-  init() {
-    // โหลดข้อมูลตามหน้าที่กำลังเข้าชม
-    if (this.isCustomerListPage) {
-      this.loadCustomerList();
-      this.setupEventListeners();
-    } else if (this.isCustomerDetailsPage) {
-      this.loadCustomerDetails();
+  initializePage() {
+    if (this.isCustomerListPage && this.customerListContainer) {
+      // Customer listing page (customer-list.html)
+      this.initCustomerListing();
+    } else if (this.isCustomerDetailsPage && this.customerDetailsContainer) {
+      // Customer details page (customer-details.html)
+      this.initCustomerDetails();
     }
   }
   
   /**
-   * ตั้งค่า Event Listeners สำหรับองค์ประกอบต่างๆ ในหน้า
+   * Initialize customer listing functionality
+   */
+  initCustomerListing() {
+    console.log('Customer Controller initializing for customer listing...');
+    
+    // Wait for app to be ready
+    if (window.InfoHubApp && window.InfoHubApp.isAppReady()) {
+      this.setupEventListeners();
+      this.loadInitialCustomers();
+    } else {
+      document.addEventListener('app-ready', () => {
+        this.setupEventListeners();
+        this.loadInitialCustomers();
+      });
+    }
+  }
+  
+  /**
+   * Initialize customer details functionality
+   */
+  initCustomerDetails() {
+    console.log('Customer Controller initializing for customer details...');
+    
+    // Parse customer ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const customerId = urlParams.get('id');
+    
+    if (!customerId) {
+      this.showError('ไม่พบรหัสลูกค้าที่ต้องการ');
+      return;
+    }
+    
+    // Wait for app to be ready
+    if (window.InfoHubApp && window.InfoHubApp.isAppReady()) {
+      this.loadCustomerDetails(customerId);
+    } else {
+      document.addEventListener('app-ready', () => {
+        this.loadCustomerDetails(customerId);
+      });
+    }
+  }
+  
+  /**
+   * Setup event listeners for customer listing
    */
   setupEventListeners() {
-    // Event Listener สำหรับการค้นหา
+    // Search form
     if (this.searchForm) {
       this.searchForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -90,162 +135,149 @@ class CustomerController {
       });
     }
     
-    // Event Listener สำหรับการเพิ่มลูกค้า
+    // Add customer button
     if (this.addCustomerButton) {
       this.addCustomerButton.addEventListener('click', () => {
         this.handleAddCustomer();
       });
     }
+    
+    // Listen for retry events
+    document.addEventListener('retry-requested', () => {
+      this.loadInitialCustomers();
+    });
+    
+    // Listen for add customer events
+    document.addEventListener('add-customer-requested', () => {
+      this.handleAddCustomer();
+    });
   }
   
   /**
-   * แสดงสถานะกำลังโหลด
+   * Load initial customers
    */
-  showLoading() {
-    this.isLoading = true;
-    if (this.loadingIndicator) {
-      this.loadingIndicator.style.display = 'flex';
-    }
-  }
-  
-  /**
-   * ซ่อนสถานะกำลังโหลด
-   */
-  hideLoading() {
-    this.isLoading = false;
-    if (this.loadingIndicator) {
-      this.loadingIndicator.style.display = 'none';
-    }
-  }
-  
-  /**
-   * แสดงข้อความผิดพลาด
-   * @param {string} message - ข้อความผิดพลาด
-   */
-  showError(message) {
-    if (this.errorMessage) {
-      this.errorMessage.textContent = message;
-      this.errorMessage.style.display = 'block';
-    }
-  }
-  
-  /**
-   * ซ่อนข้อความผิดพลาด
-   */
-  hideError() {
-    if (this.errorMessage) {
-      this.errorMessage.style.display = 'none';
-    }
-  }
-  
-  /**
-   * โหลดข้อมูลรายการลูกค้า
-   */
-  async loadCustomerList() {
+  async loadInitialCustomers() {
     try {
       this.showLoading();
-      this.hideError();
       
-      // ดึงข้อมูลลูกค้าจาก Mockup Service
       const customers = await dataService.getCustomers(this.filters);
+      this.customers = customers;
       
-      // คำนวณจำนวนหน้าทั้งหมด
+      // Calculate pagination
       this.totalPages = Math.ceil(customers.length / this.itemsPerPage);
       
-      // แบ่งหน้าข้อมูล
+      // Get paginated data
       const startIndex = (this.currentPage - 1) * this.itemsPerPage;
       const endIndex = startIndex + this.itemsPerPage;
       const paginatedCustomers = customers.slice(startIndex, endIndex);
       
-      // แสดงข้อมูลลูกค้า
-      this.renderCustomerList(paginatedCustomers);
-      
-      // แสดงการแบ่งหน้า
+      this.displayCustomers(paginatedCustomers);
+      this.updateResultsInfo(customers.length, 'รายการลูกค้าทั้งหมด');
       this.renderPagination();
-    } catch (error) {
-      this.showError(error.message || 'เกิดข้อผิดพลาดในการโหลดรายการลูกค้า');
-      console.error('Error loading customer list:', error);
       
-      // กรณีเกิดข้อผิดพลาด แสดงข้อมูลว่างเปล่า
-      if (this.customerListContainer) {
-        this.customerListContainer.innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-users"></i>
-            <p>ไม่พบข้อมูลลูกค้า</p>
-          </div>
-        `;
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification('โหลดข้อมูลลูกค้าเรียบร้อย', 'success');
       }
+      
+    } catch (error) {
+      console.error('Error loading initial customers:', error);
+      this.showError('ไม่สามารถโหลดข้อมูลลูกค้าได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
     } finally {
       this.hideLoading();
     }
   }
   
   /**
-   * โหลดข้อมูลรายละเอียดลูกค้า
+   * Handle search request
    */
-  async loadCustomerDetails() {
+  async handleSearch() {
     try {
+      // Get search values
+      const keyword = this.keywordInput?.value || '';
+      const status = this.statusSelect?.value || '';
+      
+      // Set filters
+      this.filters = {
+        search: keyword,
+        status: status
+      };
+      
+      // Reset to first page
+      this.currentPage = 1;
+      
       this.showLoading();
-      this.hideError();
       
-      // ดึง ID ลูกค้าจาก URL parameters
-      const urlParams = new URLSearchParams(window.location.search);
-      const customerId = urlParams.get('id');
+      const customers = await dataService.searchCustomers(this.filters);
+      this.customers = customers;
       
-      if (!customerId) {
-        throw new Error('ไม่พบรหัสลูกค้า');
+      // Calculate pagination
+      this.totalPages = Math.ceil(customers.length / this.itemsPerPage);
+      
+      // Get paginated data
+      const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+      const endIndex = startIndex + this.itemsPerPage;
+      const paginatedCustomers = customers.slice(startIndex, endIndex);
+      
+      this.displayCustomers(paginatedCustomers);
+      
+      // Update title based on search
+      let title = 'ผลการค้นหา';
+      if (keyword) title += ` "${keyword}"`;
+      if (status) title += ` สถานะ "${status}"`;
+      if (!keyword && !status) title = 'รายการลูกค้าทั้งหมด';
+      
+      this.updateResultsInfo(customers.length, title);
+      this.renderPagination();
+      
+      if (customers.length === 0) {
+        if (window.InfoHubApp) {
+          window.InfoHubApp.showNotification('ไม่พบลูกค้าที่ตรงกับการค้นหา', 'warning');
+        }
       }
       
-      // ดึงข้อมูลลูกค้าจาก Mockup Service
-      const customer = await dataService.getCustomerById(customerId);
-      
-      // ดึงข้อมูลการขายของลูกค้า
-      const customerSales = await dataService.getSales({ customerId });
-      
-      // ดึงข้อมูลเอกสารของลูกค้า
-      const customerDocuments = await dataService.getDocuments({ customerId });
-      
-      // แสดงข้อมูลลูกค้า
-      this.renderCustomerDetails(customer, customerSales, customerDocuments);
     } catch (error) {
-      this.showError(error.message || 'เกิดข้อผิดพลาดในการโหลดข้อมูลลูกค้า');
-      console.error('Error loading customer details:', error);
-      
-      // กรณีเกิดข้อผิดพลาด แสดงข้อมูลว่างเปล่า
-      if (this.customerDetailsContainer) {
-        this.customerDetailsContainer.innerHTML = `
-          <div class="error-container">
-            <i class="fas fa-exclamation-circle"></i>
-            <p>ไม่พบข้อมูลลูกค้า</p>
-            <a href="customer-list.html" class="btn btn-primary">กลับไปยังรายการลูกค้า</a>
-          </div>
-        `;
-      }
+      console.error('Error searching customers:', error);
+      this.showError('เกิดข้อผิดพลาดในการค้นหา กรุณาลองใหม่อีกครั้ง');
     } finally {
       this.hideLoading();
     }
   }
   
   /**
-   * แสดงข้อมูลรายการลูกค้า
-   * @param {Array} customers - รายการลูกค้า
+   * Handle clear search
    */
-  renderCustomerList(customers) {
+  handleClearSearch() {
+    // Reset form values
+    if (this.keywordInput) this.keywordInput.value = '';
+    if (this.statusSelect) this.statusSelect.value = '';
+    
+    // Reset filters
+    this.filters = {
+      search: '',
+      status: ''
+    };
+    
+    // Reset to first page
+    this.currentPage = 1;
+    
+    // Reload customers
+    this.loadInitialCustomers();
+  }
+  
+  /**
+   * Display customers in the UI
+   */
+  displayCustomers(customers) {
     if (!this.customerListContainer) return;
     
-    // ตรวจสอบว่ามีข้อมูลลูกค้าหรือไม่
     if (!customers || customers.length === 0) {
-      this.customerListContainer.innerHTML = `
-        <div class="empty-state">
-          <i class="fas fa-users"></i>
-          <p>ไม่พบข้อมูลลูกค้าที่ตรงกับเงื่อนไขการค้นหา</p>
-        </div>
-      `;
+      this.showEmptyState();
       return;
     }
     
-    // สร้าง HTML สำหรับตารางรายการลูกค้า
-    let html = `
+    this.hideEmptyState();
+    
+    const html = `
       <table class="data-table">
         <thead>
           <tr>
@@ -253,85 +285,316 @@ class CustomerController {
             <th>เบอร์โทรศัพท์</th>
             <th>อีเมล</th>
             <th>สถานะ</th>
-            <th>วันที่ติดต่อล่าสุด</th>
+            <th>วันที่สร้าง</th>
             <th>การดำเนินการ</th>
           </tr>
         </thead>
         <tbody>
-    `;
-    
-    // สร้าง HTML สำหรับแต่ละลูกค้า
-    customers.forEach(customer => {
-      // แปลงวันที่เป็นรูปแบบที่อ่านง่าย
-      const lastContactDate = new Date(customer.lastContact);
-      const formattedDate = `${lastContactDate.getDate()}/${lastContactDate.getMonth() + 1}/${lastContactDate.getFullYear() + 543}`;
-      
-      // กำหนด CSS class ตามสถานะ
-      let statusClass = '';
-      switch (customer.status) {
-        case 'สอบถามข้อมูล': statusClass = 'status-inquiry'; break;
-        case 'ลูกค้าสนใจ': statusClass = 'status-interested'; break;
-        case 'ส่งใบเสนอราคา': statusClass = 'status-quotation'; break;
-        case 'ต่อรองราคา': statusClass = 'status-negotiation'; break;
-        case 'ยืนยันการสั่งซื้อ': statusClass = 'status-confirmed'; break;
-        case 'ส่งมอบสินค้า': statusClass = 'status-delivered'; break;
-        case 'บริการหลังการขาย': statusClass = 'status-aftersale'; break;
-        default: statusClass = ''; break;
-      }
-      
-      html += `
-        <tr>
-          <td>
-            <a href="customer-details.html?id=${customer.id}" class="customer-name">
-              ${customer.name}
-            </a>
-          </td>
-          <td>${customer.phone}</td>
-          <td>${customer.email}</td>
-          <td><span class="status ${statusClass}">${customer.status}</span></td>
-          <td>${formattedDate}</td>
-          <td>
-            <div class="action-buttons">
-              <a href="customer-details.html?id=${customer.id}" class="btn-icon" title="ดูรายละเอียด">
-                <i class="fas fa-eye"></i>
-              </a>
-              <a href="sale-details.html?action=new&customer=${customer.id}" class="btn-icon" title="เพิ่มการขาย">
-                <i class="fas fa-shopping-cart"></i>
-              </a>
-              <button class="btn-icon send-email" data-customer-id="${customer.id}" title="ส่งอีเมล">
-                <i class="fas fa-envelope"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    });
-    
-    html += `
+          ${customers.map(customer => this.createCustomerRow(customer)).join('')}
         </tbody>
       </table>
     `;
     
-    // แสดงผลลัพธ์
     this.customerListContainer.innerHTML = html;
     
-    // ตั้งค่า event listeners สำหรับปุ่มส่งอีเมล
-    const sendEmailButtons = document.querySelectorAll('.send-email');
-    sendEmailButtons.forEach(button => {
-      button.addEventListener('click', () => {
+    // Setup customer event listeners
+    this.setupCustomerEventListeners();
+  }
+  
+  /**
+   * Create customer row HTML
+   */
+  createCustomerRow(customer) {
+    const statusClass = this.getStatusClass(customer.status);
+    const createdDate = new Date(customer.created_at).toLocaleDateString('th-TH');
+    
+    return `
+      <tr data-customer-id="${this.escapeHtml(customer.id)}">
+        <td>
+          <a href="customer-details.html?id=${encodeURIComponent(customer.id)}" class="customer-name">
+            ${this.escapeHtml(customer.name)}
+          </a>
+        </td>
+        <td>
+          <a href="tel:${this.escapeHtml(customer.tel)}">${this.escapeHtml(customer.tel || 'ไม่ระบุ')}</a>
+        </td>
+        <td>
+          ${customer.email ? `<a href="mailto:${this.escapeHtml(customer.email)}">${this.escapeHtml(customer.email)}</a>` : 'ไม่ระบุ'}
+        </td>
+        <td>
+          <span class="status ${statusClass}">${this.getStatusText(customer.status)}</span>
+        </td>
+        <td>${createdDate}</td>
+        <td>
+          <div class="action-buttons">
+            <a href="customer-details.html?id=${encodeURIComponent(customer.id)}" class="btn-icon" title="ดูรายละเอียด">
+              <i class="fas fa-eye"></i>
+            </a>
+            <a href="sale-details.html?action=new&customer=${encodeURIComponent(customer.id)}" class="btn-icon" title="เพิ่มการขาย">
+              <i class="fas fa-shopping-cart"></i>
+            </a>
+            <button class="btn-icon edit-customer" data-customer-id="${this.escapeHtml(customer.id)}" title="แก้ไขข้อมูล">
+              <i class="fas fa-edit"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+  
+  /**
+   * Setup customer event listeners
+   */
+  setupCustomerEventListeners() {
+    // Edit customer buttons
+    const editButtons = document.querySelectorAll('.edit-customer');
+    editButtons.forEach(button => {
+      button.addEventListener('click', async (e) => {
+        e.stopPropagation();
         const customerId = button.getAttribute('data-customer-id');
-        alert(`ส่งอีเมลไปยังลูกค้ารหัส ${customerId}`);
+        
+        try {
+          const customer = await dataService.getCustomerById(customerId);
+          this.showEditCustomerModal(customer);
+        } catch (error) {
+          console.error('Error loading customer for edit:', error);
+          if (window.InfoHubApp) {
+            window.InfoHubApp.showNotification('ไม่สามารถโหลดข้อมูลลูกค้าได้', 'error');
+          }
+        }
       });
     });
   }
   
   /**
-   * แสดงการแบ่งหน้า
+   * Handle add customer
+   */
+  async handleAddCustomer() {
+    this.showAddCustomerModal();
+  }
+  
+  /**
+   * Show add customer modal
+   */
+  showAddCustomerModal() {
+    const template = document.getElementById('add-customer-modal-template');
+    if (!template) {
+      // Create modal if template doesn't exist
+      this.createAddCustomerModal();
+      return;
+    }
+    
+    const modalContent = template.content.cloneNode(true);
+    const modalElement = document.createElement('div');
+    modalElement.appendChild(modalContent);
+    
+    document.body.appendChild(modalElement);
+    
+    // Setup modal event listeners
+    this.setupAddCustomerModalListeners(modalElement);
+    
+    // Show modal with animation
+    setTimeout(() => {
+      const backdrop = modalElement.querySelector('.modal-backdrop');
+      if (backdrop) {
+        backdrop.style.display = 'flex';
+      }
+    }, 10);
+  }
+  
+  /**
+   * Create add customer modal
+   */
+  createAddCustomerModal() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.style.display = 'flex';
+    
+    modal.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <h2>เพิ่มลูกค้าใหม่</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="new-fname" class="form-label">ชื่อ *</label>
+            <input type="text" id="new-fname" class="form-input" placeholder="กรอกชื่อ" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-name" class="form-label">นามสกุล *</label>
+            <input type="text" id="new-name" class="form-input" placeholder="กรอกนามสกุล" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-tel" class="form-label">เบอร์โทรศัพท์ *</label>
+            <input type="tel" id="new-tel" class="form-input" placeholder="กรอกเบอร์โทรศัพท์" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-email" class="form-label">อีเมล</label>
+            <input type="email" id="new-email" class="form-input" placeholder="กรอกอีเมล">
+          </div>
+          
+          <div class="form-group">
+            <label for="new-address" class="form-label">ที่อยู่</label>
+            <textarea id="new-address" class="form-input" rows="3" placeholder="กรอกที่อยู่"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-status" class="form-label">สถานะ</label>
+            <select id="new-status" class="form-input">
+              <option value="interested">สนใจ</option>
+              <option value="contacted">ติดต่อแล้ว</option>
+              <option value="negotiating">กำลังเจรจา</option>
+              <option value="confirmed">ยืนยันแล้ว</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-note" class="form-label">หมายเหตุ</label>
+            <textarea id="new-note" class="form-input" rows="3" placeholder="กรอกหมายเหตุเพิ่มเติม"></textarea>
+          </div>
+          
+          <small class="form-note">* ข้อมูลที่จำเป็นต้องกรอก</small>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-add-customer">
+            <i class="fas fa-save"></i> บันทึกข้อมูลลูกค้า
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    this.setupAddCustomerModalListeners(modal);
+  }
+  
+  /**
+   * Setup add customer modal listeners
+   */
+  setupAddCustomerModalListeners(modalElement) {
+    const closeButtons = modalElement.querySelectorAll('.modal-close');
+    closeButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        if (window.InfoHubApp) {
+          window.InfoHubApp.closeModal(modalElement.querySelector('.modal-backdrop'));
+        } else {
+          modalElement.remove();
+        }
+      });
+    });
+    
+    const confirmButton = modalElement.querySelector('#confirm-add-customer');
+    if (confirmButton) {
+      confirmButton.addEventListener('click', () => {
+        this.handleCreateCustomer(modalElement);
+      });
+    }
+    
+    // Close on backdrop click
+    const backdrop = modalElement.querySelector('.modal-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+          if (window.InfoHubApp) {
+            window.InfoHubApp.closeModal(backdrop);
+          } else {
+            modalElement.remove();
+          }
+        }
+      });
+    }
+  }
+  
+  /**
+   * Handle create customer
+   */
+  async handleCreateCustomer(modalElement) {
+    try {
+      const fname = modalElement.querySelector('#new-fname').value.trim();
+      const name = modalElement.querySelector('#new-name').value.trim();
+      const tel = modalElement.querySelector('#new-tel').value.trim();
+      const email = modalElement.querySelector('#new-email').value.trim();
+      const address = modalElement.querySelector('#new-address').value.trim();
+      const status = modalElement.querySelector('#new-status').value;
+      const note = modalElement.querySelector('#new-note').value.trim();
+      
+      // Validate required fields
+      if (!fname || !name || !tel) {
+        alert('กรุณากรอกข้อมูลที่จำเป็น (ชื่อ, นามสกุล, เบอร์โทรศัพท์)');
+        return;
+      }
+      
+      // Show loading
+      const confirmButton = modalElement.querySelector('#confirm-add-customer');
+      const originalText = confirmButton.innerHTML;
+      confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+      confirmButton.disabled = true;
+      
+      // Create customer data
+      const customerData = {
+        fname,
+        name,
+        tel,
+        email,
+        address,
+        status,
+        note
+      };
+      
+      // Call API
+      const newCustomer = await dataService.createCustomer(customerData);
+      
+      // Close modal
+      if (window.InfoHubApp) {
+        window.InfoHubApp.closeModal(modalElement.querySelector('.modal-backdrop'));
+      } else {
+        modalElement.remove();
+      }
+      
+      // Show success message
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(`เพิ่มลูกค้า "${fname} ${name}" เรียบร้อยแล้ว`, 'success');
+      }
+      
+      // Reload customer list
+      this.loadInitialCustomers();
+      
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      
+      // Reset button
+      const confirmButton = modalElement.querySelector('#confirm-add-customer');
+      if (confirmButton) {
+        confirmButton.innerHTML = '<i class="fas fa-save"></i> บันทึกข้อมูลลูกค้า';
+        confirmButton.disabled = false;
+      }
+      
+      // Show error message
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(error.message || 'ไม่สามารถเพิ่มลูกค้าได้', 'error');
+      } else {
+        alert(error.message || 'ไม่สามารถเพิ่มลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
+      }
+    }
+  }
+  
+  /**
+   * Render pagination
    */
   renderPagination() {
     if (!this.paginationContainer) return;
     
-    // ไม่แสดงการแบ่งหน้าถ้ามีเพียงหน้าเดียว
+    // Don't show pagination if only one page
     if (this.totalPages <= 1) {
       this.paginationContainer.innerHTML = '';
       return;
@@ -348,7 +611,7 @@ class CustomerController {
         <div class="pagination-pages">
     `;
     
-    // แสดงเลขหน้า
+    // Show page numbers
     const startPage = Math.max(1, this.currentPage - 2);
     const endPage = Math.min(this.totalPages, startPage + 4);
     
@@ -372,10 +635,9 @@ class CustomerController {
       </div>
     `;
     
-    // แสดงผลลัพธ์
     this.paginationContainer.innerHTML = html;
     
-    // ตั้งค่า event listeners สำหรับปุ่มแบ่งหน้า
+    // Setup pagination event listeners
     const paginationButtons = document.querySelectorAll('.pagination-button');
     paginationButtons.forEach(button => {
       button.addEventListener('click', () => {
@@ -391,766 +653,1109 @@ class CustomerController {
           this.currentPage = parseInt(page);
         }
         
-        this.loadCustomerList();
+        this.loadInitialCustomers();
       });
     });
   }
   
   /**
-   * แสดงข้อมูลรายละเอียดลูกค้า
-   * @param {Object} customer - ข้อมูลลูกค้า
-   * @param {Array} sales - รายการขายของลูกค้า
-   * @param {Array} documents - รายการเอกสารของลูกค้า
+   * Load customer details
    */
-  async renderCustomerDetails(customer, sales, documents) {
+  async loadCustomerDetails(customerId) {
+    try {
+      this.showLoading();
+      
+      const customer = await dataService.getCustomerById(customerId);
+      this.currentCustomer = customer;
+      
+      this.displayCustomerDetails(customer);
+      
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification('โหลดข้อมูลลูกค้าเรียบร้อย', 'success');
+      }
+      
+    } catch (error) {
+      console.error('Error loading customer details:', error);
+      this.showError('ไม่สามารถโหลดข้อมูลลูกค้าได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+    } finally {
+      this.hideLoading();
+    }
+  }
+  
+  /**
+   * Display customer details
+   */
+  displayCustomerDetails(customer) {
     if (!this.customerDetailsContainer) return;
     
-    // แปลงวันที่เป็นรูปแบบที่อ่านง่าย
-    const dateCreated = new Date(customer.dateCreated);
-    const formattedDateCreated = `${dateCreated.getDate()}/${dateCreated.getMonth() + 1}/${dateCreated.getFullYear() + 543}`;
+    const statusClass = this.getStatusClass(customer.status);
+    const priorityClass = this.getPriorityClass(customer.priority);
     
-    const lastContact = new Date(customer.lastContact);
-    const formattedLastContact = `${lastContact.getDate()}/${lastContact.getMonth() + 1}/${lastContact.getFullYear() + 543}`;
-    
-    // กำหนด CSS class ตามสถานะ
-    let statusClass = '';
-    switch (customer.status) {
-      case 'สอบถามข้อมูล': statusClass = 'status-inquiry'; break;
-      case 'ลูกค้าสนใจ': statusClass = 'status-interested'; break;
-      case 'ส่งใบเสนอราคา': statusClass = 'status-quotation'; break;
-      case 'ต่อรองราคา': statusClass = 'status-negotiation'; break;
-      case 'ยืนยันการสั่งซื้อ': statusClass = 'status-confirmed'; break;
-      case 'ส่งมอบสินค้า': statusClass = 'status-delivered'; break;
-      case 'บริการหลังการขาย': statusClass = 'status-aftersale'; break;
-      default: statusClass = ''; break;
-    }
-    
-    // สร้าง HTML แท็กจากข้อมูล tags ของลูกค้า
-    const tagsHtml = customer.tags ? customer.tags.map(tag => `<span class="tag">${tag}</span>`).join('') : '';
-    
-    // ดึงข้อมูลสินค้าที่สนใจ
-    const interestedProductsHtml = await this.renderInterestedProducts(customer.interestedProducts);
-    
-    // สร้าง HTML สำหรับรายละเอียดลูกค้า
     const html = `
-      <div class="customer-details">
-        <div class="customer-header">
-          <div class="customer-info">
-            <h1>${customer.name}</h1>
-            <p class="customer-id">รหัสลูกค้า: ${customer.id}</p>
-            <div class="customer-status">
-              <span class="status ${statusClass}">${customer.status}</span>
-              ${tagsHtml}
-            </div>
-          </div>
-          
-          <div class="customer-actions">
-            <button class="btn btn-primary" id="create-sale-btn">
-              <i class="fas fa-shopping-cart"></i> สร้างการขาย
-            </button>
-            <button class="btn btn-outline" id="update-status-btn">
-              <i class="fas fa-sync-alt"></i> อัปเดตสถานะ
-            </button>
-            <button class="btn btn-outline" id="edit-customer-btn">
-              <i class="fas fa-edit"></i> แก้ไขข้อมูล
-            </button>
+      <!-- Customer Header -->
+      <div class="customer-header">
+        <div class="customer-title-section">
+          <h1 class="customer-title">${this.escapeHtml(customer.name)}</h1>
+          <p class="customer-code">รหัสลูกค้า: <span class="code-value">${this.escapeHtml(customer.id)}</span></p>
+          <div class="customer-status">
+            <span class="status-badge ${statusClass}">${this.getStatusText(customer.status)}</span>
+            <span class="priority-badge ${priorityClass}">${this.getPriorityText(customer.priority)}</span>
           </div>
         </div>
         
-        <div class="customer-content">
-          <div class="customer-details-grid">
-            <!-- ข้อมูลติดต่อ -->
-            <div class="detail-card">
-              <div class="card-header">
-                <h2><i class="fas fa-address-card"></i> ข้อมูลติดต่อ</h2>
+        <div class="customer-actions-header">
+          <button class="btn btn-primary btn-large" id="create-sale-btn">
+            <i class="fas fa-shopping-cart"></i> สร้างการขาย
+          </button>
+          <button class="btn btn-outline btn-large" id="edit-customer-btn">
+            <i class="fas fa-edit"></i> แก้ไขข้อมูล
+          </button>
+        </div>
+      </div>
+      
+      <!-- Customer Content -->
+      <div class="customer-content">
+        <!-- Left Column - Contact Information -->
+        <div class="customer-left-column">
+          <div class="customer-info-card">
+            <h3 class="card-title">
+              <i class="fas fa-user"></i> ข้อมูลติดต่อ
+            </h3>
+            <div class="contact-info">
+              <div class="contact-item">
+                <span class="contact-label">เบอร์โทร:</span>
+                <span class="contact-value">
+                  <a href="tel:${this.escapeHtml(customer.tel)}">${this.escapeHtml(customer.tel || 'ไม่ระบุ')}</a>
+                </span>
               </div>
-              <div class="card-body">
-                <p><strong>เบอร์โทรศัพท์:</strong> <a href="tel:${customer.phone}">${customer.phone}</a></p>
-                <p><strong>อีเมล:</strong> <a href="mailto:${customer.email}">${customer.email}</a></p>
-                <p><strong>ที่อยู่:</strong> ${customer.address}</p>
-                <div class="contact-actions">
-                  <button class="btn btn-sm btn-outline">
-                    <i class="fas fa-phone"></i> โทร
-                  </button>
-                  <button class="btn btn-sm btn-outline">
-                    <i class="fas fa-envelope"></i> อีเมล
-                  </button>
-                  <button class="btn btn-sm btn-outline">
-                    <i class="fab fa-line"></i> LINE
-                  </button>
-                </div>
+              <div class="contact-item">
+                <span class="contact-label">อีเมล:</span>
+                <span class="contact-value">
+                  ${customer.email ? `<a href="mailto:${this.escapeHtml(customer.email)}">${this.escapeHtml(customer.email)}</a>` : 'ไม่ระบุ'}
+                </span>
               </div>
-            </div>
-            
-            <!-- ข้อมูลการติดตาม -->
-            <div class="detail-card">
-              <div class="card-header">
-                <h2><i class="fas fa-history"></i> ข้อมูลการติดตาม</h2>
-              </div>
-              <div class="card-body">
-                <p><strong>วันที่เพิ่มข้อมูล:</strong> ${formattedDateCreated}</p>
-                <p><strong>วันที่ติดต่อล่าสุด:</strong> ${formattedLastContact}</p>
-                <p><strong>สถานะปัจจุบัน:</strong> <span class="status ${statusClass}">${customer.status}</span></p>
-                <p><strong>บันทึกเพิ่มเติม:</strong></p>
-                <div class="customer-notes">${customer.notes || 'ไม่มีบันทึก'}</div>
-              </div>
-            </div>
-            
-            <!-- สินค้าที่สนใจ -->
-            <div class="detail-card">
-              <div class="card-header">
-                <h2><i class="fas fa-star"></i> สินค้าที่สนใจ</h2>
-              </div>
-              <div class="card-body">
-                <div class="interested-products">
-                  ${interestedProductsHtml}
-                </div>
-              </div>
-            </div>
-            
-            <!-- การวิเคราะห์ลูกค้า -->
-            <div class="detail-card">
-              <div class="card-header">
-                <h2><i class="fas fa-chart-pie"></i> การวิเคราะห์ลูกค้า</h2>
-              </div>
-              <div class="card-body">
-                <p><strong>ประเภทลูกค้า:</strong> ${customer.tags?.includes('ลูกค้าประจำ') ? 'ลูกค้าประจำ' : 'ลูกค้าใหม่'}</p>
-                <p><strong>มูลค่าการซื้อทั้งหมด:</strong> ${this.calculateTotalSales(sales)} บาท</p>
-                <p><strong>จำนวนครั้งที่ซื้อ:</strong> ${sales.length} ครั้ง</p>
-                <p><strong>โอกาสปิดการขาย:</strong> ${this.calculateSalesProbability(customer.status)}%</p>
+              <div class="contact-item">
+                <span class="contact-label">ที่อยู่:</span>
+                <span class="contact-value">${this.escapeHtml(customer.address || 'ไม่ระบุ')}</span>
               </div>
             </div>
           </div>
           
-          <!-- ประวัติการขาย -->
-          <div class="card">
-            <h2><i class="fas fa-shopping-cart"></i> ประวัติการขาย</h2>
-            
-            ${this.renderSalesHistory(sales)}
-          </div>
-          
-          <!-- เอกสารที่เกี่ยวข้อง -->
-          <div class="card">
-            <h2><i class="fas fa-file-alt"></i> เอกสารที่เกี่ยวข้อง</h2>
-            
-            ${this.renderDocuments(documents)}
-          </div>
-          
-          <!-- บันทึกและการติดตาม -->
-          <div class="card">
-            <h2><i class="fas fa-comments"></i> บันทึกและการติดตาม</h2>
-            
-            <div class="follow-up-form">
-              <textarea placeholder="เพิ่มบันทึกหรือการติดตามใหม่..."></textarea>
-              <button class="btn btn-primary">
-                <i class="fas fa-plus"></i> เพิ่มบันทึก
-              </button>
-            </div>
-            
-            <div class="follow-up-list">
-              <!-- จะมีการเพิ่มข้อมูลจริงในอนาคต -->
-              <div class="empty-state">
-                <i class="fas fa-comment-alt"></i>
-                <p>ไม่มีบันทึกการติดตาม</p>
+          <!-- Customer Statistics -->
+          <div class="customer-info-card">
+            <h3 class="card-title">
+              <i class="fas fa-chart-bar"></i> สถิติการซื้อ
+            </h3>
+            <div class="customer-stats">
+              <div class="stat-item">
+                <div class="stat-value">${customer.totalOrders || 0}</div>
+                <div class="stat-label">ครั้ง</div>
+                <div class="stat-description">จำนวนการซื้อ</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">${window.InfoHubApp ? window.InfoHubApp.formatCurrency(customer.totalSpent || 0) : '฿0'}</div>
+                <div class="stat-label">บาท</div>
+                <div class="stat-description">ยอดซื้อรวม</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">${customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString('th-TH') : '-'}</div>
+                <div class="stat-label">ครั้งล่าสุด</div>
+                <div class="stat-description">ซื้อล่าสุด</div>
               </div>
             </div>
           </div>
         </div>
+        
+  <!-- Right Column - Additional Information -->
+       <div class="customer-right-column">
+         <!-- Timeline -->
+         <div class="customer-info-card">
+           <h3 class="card-title">
+             <i class="fas fa-history"></i> ประวัติการติดต่อ
+           </h3>
+           <div class="timeline">
+             <div class="timeline-item">
+               <div class="timeline-icon">
+                 <i class="fas fa-user-plus"></i>
+               </div>
+               <div class="timeline-content">
+                 <div class="timeline-title">ลูกค้าใหม่</div>
+                 <div class="timeline-description">เพิ่มข้อมูลลูกค้าในระบบ</div>
+                 <div class="timeline-date">${new Date(customer.created_at).toLocaleDateString('th-TH')}</div>
+               </div>
+             </div>
+             ${customer.lastContact ? `
+               <div class="timeline-item">
+                 <div class="timeline-icon">
+                   <i class="fas fa-phone"></i>
+                 </div>
+                 <div class="timeline-content">
+                   <div class="timeline-title">ติดต่อล่าสุด</div>
+                   <div class="timeline-description">ผ่าน ${this.getContactMethodText(customer.contactMethod)}</div>
+                   <div class="timeline-date">${new Date(customer.lastContact).toLocaleDateString('th-TH')}</div>
+                 </div>
+               </div>
+             ` : ''}
+           </div>
+         </div>
+          
+          <!-- Notes -->
+          ${customer.note ? `
+            <div class="customer-info-card">
+              <h3 class="card-title">
+                <i class="fas fa-sticky-note"></i> หมายเหตุ
+              </h3>
+              <div class="customer-notes">
+                <p>${this.escapeHtml(customer.note)}</p>
+              </div>
+            </div>
+          ` : ''}
+          
+          <!-- Tags -->
+          ${customer.tags && customer.tags.length > 0 ? `
+            <div class="customer-info-card">
+              <h3 class="card-title">
+                <i class="fas fa-tags"></i> แท็ก
+              </h3>
+              <div class="customer-tags">
+                ${customer.tags.map(tag => `
+                  <span class="tag">${this.escapeHtml(tag)}</span>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+      
+      <!-- Action Buttons (Mobile Fixed) -->
+      <div class="customer-actions-mobile">
+        <button class="btn btn-primary btn-mobile" id="create-sale-btn-mobile">
+          <i class="fas fa-shopping-cart"></i> สร้างการขาย
+        </button>
+        <button class="btn btn-outline btn-mobile" id="edit-customer-btn-mobile">
+          <i class="fas fa-edit"></i> แก้ไขข้อมูล
+        </button>
       </div>
     `;
     
-    // แสดงผลลัพธ์
     this.customerDetailsContainer.innerHTML = html;
     
-    // ตั้งค่า event listeners สำหรับปุ่มต่างๆ
-    document.getElementById('create-sale-btn')?.addEventListener('click', () => {
-      window.location.href = `sale-details.html?action=new&customer=${customer.id}`;
-    });
+    // Setup event listeners for customer details
+    this.setupCustomerDetailsEventListeners();
     
-    document.getElementById('update-status-btn')?.addEventListener('click', () => {
-      this.showUpdateStatusModal(customer);
-    });
-    
-    document.getElementById('edit-customer-btn')?.addEventListener('click', () => {
-      this.showEditCustomerModal(customer);
-    });
+    // Add custom styles for customer details
+    this.addCustomerDetailsStyles();
   }
   
   /**
-   * สร้าง HTML สำหรับรายการสินค้าที่สนใจ
-   * @param {Array} productIds - รายการรหัสสินค้าที่สนใจ
-   * @returns {string} - HTML string
+   * Setup event listeners for customer details page
    */
-  async renderInterestedProducts(productIds) {
-    if (!productIds || productIds.length === 0) {
-      return `
-        <div class="empty-state">
-          <i class="fas fa-star"></i>
-          <p>ไม่มีสินค้าที่สนใจ</p>
-        </div>
-      `;
-    }
-    
-    try {
-      // สร้าง HTML สำหรับแต่ละสินค้าที่สนใจ
-      let html = '';
-      
-      for (const productId of productIds) {
-        try {
-          // ดึงข้อมูลสินค้าจาก Mockup Service
-          const product = await dataService.getProductById(productId);
-          
-          html += `
-            <div class="interested-product">
-              <div class="product-image">
-                <img src="${product.images[0] || '/api/placeholder/50/50'}" alt="${product.name}">
-              </div>
-              <div class="product-info">
-                <a href="product-details.html?id=${product.id}" class="product-name">${product.name}</a>
-                <p class="product-price">฿${product.price.toLocaleString()}</p>
-              </div>
-            </div>
-          `;
-        } catch (error) {
-          // ถ้าไม่พบสินค้า ข้ามไป
-          console.error(`Error loading product ${productId}:`, error);
-        }
-      }
-      
-      return html || `
-        <div class="empty-state">
-          <i class="fas fa-star"></i>
-          <p>ไม่สามารถโหลดข้อมูลสินค้าที่สนใจ</p>
-        </div>
-      `;
-    } catch (error) {
-      console.error('Error rendering interested products:', error);
-      return `
-        <div class="empty-state">
-          <i class="fas fa-star"></i>
-          <p>ไม่สามารถโหลดข้อมูลสินค้าที่สนใจ</p>
-        </div>
-      `;
-    }
-  }
-  
-  /**
-   * สร้าง HTML สำหรับประวัติการขาย
-   * @param {Array} sales - รายการขาย
-   * @returns {string} - HTML string
-   */
-  renderSalesHistory(sales) {
-    if (!sales || sales.length === 0) {
-      return `
-        <div class="empty-state">
-          <i class="fas fa-shopping-cart"></i>
-          <p>ไม่มีประวัติการขาย</p>
-        </div>
-      `;
-    }
-    
-    let html = `
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>รหัสการขาย</th>
-              <th>วันที่</th>
-              <th>สินค้า</th>
-              <th>ยอดรวม</th>
-              <th>สถานะ</th>
-              <th>การดำเนินการ</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-    
-    // สร้าง HTML สำหรับแต่ละรายการขาย
-    sales.forEach(sale => {
-      // แปลงวันที่เป็นรูปแบบที่อ่านง่าย
-      const saleDate = new Date(sale.date);
-      const formattedDate = `${saleDate.getDate()}/${saleDate.getMonth() + 1}/${saleDate.getFullYear() + 543}`;
-      
-      // รายการสินค้าย่อ
-      const productsText = sale.items.map(item => item.productName).join(', ');
-      
-      // กำหนด CSS class ตามสถานะ
-      let statusClass = '';
-      switch (sale.status) {
-        case 'สอบถามข้อมูล': statusClass = 'status-inquiry'; break;
-        case 'ลูกค้าสนใจ': statusClass = 'status-interested'; break;
-        case 'ส่งใบเสนอราคา': statusClass = 'status-quotation'; break;
-        case 'ต่อรองราคา': statusClass = 'status-negotiation'; break;
-        case 'ยืนยันการสั่งซื้อ': statusClass = 'status-confirmed'; break;
-        case 'ส่งมอบสินค้า': statusClass = 'status-delivered'; break;
-        case 'บริการหลังการขาย': statusClass = 'status-aftersale'; break;
-        default: statusClass = ''; break;
-      }
-      
-      html += `
-        <tr>
-          <td><a href="sale-details.html?id=${sale.id}">${sale.id}</a></td>
-          <td>${formattedDate}</td>
-          <td>${productsText}</td>
-          <td>฿${sale.total.toLocaleString()}</td>
-          <td><span class="status ${statusClass}">${sale.status}</span></td>
-          <td>
-            <div class="action-buttons">
-              <a href="sale-details.html?id=${sale.id}" class="btn-icon" title="ดูรายละเอียด">
-                <i class="fas fa-eye"></i>
-              </a>
-              <button class="btn-icon update-sale-status" data-sale-id="${sale.id}" title="อัปเดตสถานะ">
-                <i class="fas fa-sync-alt"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    });
-    
-    html += `
-          </tbody>
-        </table>
-      </div>
-    `;
-    
-    return html;
-  }
-  
-  /**
-   * สร้าง HTML สำหรับเอกสารที่เกี่ยวข้อง
-   * @param {Array} documents - รายการเอกสาร
-   * @returns {string} - HTML string
-   */
-  renderDocuments(documents) {
-    if (!documents || documents.length === 0) {
-      return `
-        <div class="empty-state">
-          <i class="fas fa-file-alt"></i>
-          <p>ไม่มีเอกสารที่เกี่ยวข้อง</p>
-        </div>
-      `;
-    }
-    
-    let html = `
-      <div class="document-grid">
-    `;
-    
-    // สร้าง HTML สำหรับแต่ละเอกสาร
-    documents.forEach(doc => {
-      // แปลงวันที่เป็นรูปแบบที่อ่านง่าย
-      const docDate = new Date(doc.date);
-      const formattedDate = `${docDate.getDate()}/${docDate.getMonth() + 1}/${docDate.getFullYear() + 543}`;
-      
-      // กำหนดไอคอนตามประเภทเอกสาร
-      let iconClass = '';
-      switch (doc.type) {
-        case 'ใบเสนอราคา': iconClass = 'fas fa-file-invoice-dollar'; break;
-        case 'ใบสั่งซื้อ': iconClass = 'fas fa-file-signature'; break;
-        case 'ใบเสร็จรับเงิน': iconClass = 'fas fa-file-invoice'; break;
-        case 'สเปคสินค้า': iconClass = 'fas fa-file-alt'; break;
-        case 'คู่มือการใช้งาน': iconClass = 'fas fa-book'; break;
-        default: iconClass = 'fas fa-file'; break;
-      }
-      
-      html += `
-        <div class="document-item">
-          <div class="document-icon">
-            <i class="${iconClass}"></i>
-          </div>
-          <div class="document-info">
-            <h3>${doc.title}</h3>
-            <p class="document-date">${formattedDate}</p>
-            <p class="document-size">${doc.fileSize}</p>
-          </div>
-          <div class="document-actions">
-            <button class="btn-icon view-document" data-document-id="${doc.id}" title="ดูเอกสาร">
-              <i class="fas fa-eye"></i>
-            </button>
-            <button class="btn-icon download-document" data-document-id="${doc.id}" title="ดาวน์โหลด">
-              <i class="fas fa-download"></i>
-            </button>
-          </div>
-        </div>
-      `;
-    });
-    
-    html += `
-      </div>
-    `;
-    
-    return html;
-  }
-  
-  /**
-   * คำนวณมูลค่าการซื้อทั้งหมดของลูกค้า
-   * @param {Array} sales - รายการขาย
-   * @returns {string} - มูลค่าการซื้อที่จัดรูปแบบแล้ว
-   */
-  calculateTotalSales(sales) {
-    if (!sales || sales.length === 0) return '0';
-    
-    const total = sales.reduce((sum, sale) => sum + sale.total, 0);
-    return total.toLocaleString();
-  }
-  
-  /**
-   * คำนวณโอกาสปิดการขายตามสถานะของลูกค้า
-   * @param {string} status - สถานะของลูกค้า
-   * @returns {number} - เปอร์เซ็นต์โอกาสปิดการขาย
-   */
-  calculateSalesProbability(status) {
-    switch (status) {
-      case 'สอบถามข้อมูล': return 20;
-      case 'ลูกค้าสนใจ': return 40;
-      case 'ส่งใบเสนอราคา': return 60;
-      case 'ต่อรองราคา': return 75;
-      case 'ยืนยันการสั่งซื้อ': return 95;
-      case 'ส่งมอบสินค้า': return 100;
-      case 'บริการหลังการขาย': return 100;
-      default: return 0;
-    }
-  }
-  
-  /**
-   * แสดง Modal สำหรับการอัปเดตสถานะลูกค้า
-   * @param {Object} customer - ข้อมูลลูกค้า
-   */
-  showUpdateStatusModal(customer) {
-    // สร้าง Modal element
-    const modal = document.createElement('div');
-    modal.className = 'modal-backdrop';
-    modal.style.display = 'flex';
-    
-    // กำหนดตัวเลือกสถานะ
-    const statusOptions = [
-      'สอบถามข้อมูล',
-      'ลูกค้าสนใจ',
-      'ส่งใบเสนอราคา',
-      'ต่อรองราคา',
-      'ยืนยันการสั่งซื้อ',
-      'ส่งมอบสินค้า',
-      'บริการหลังการขาย'
-    ];
-    
-    // สร้าง HTML สำหรับ Modal
-    modal.innerHTML = `
-      <div class="modal">
-        <div class="modal-header">
-          <h2>อัปเดตสถานะลูกค้า</h2>
-          <button class="modal-close"><i class="fas fa-times"></i></button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="status-select" class="form-label">เลือกสถานะใหม่</label>
-            <select id="status-select" class="form-input">
-              ${statusOptions.map(status => `
-                <option value="${status}" ${status === customer.status ? 'selected' : ''}>${status}</option>
-              `).join('')}
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="status-note" class="form-label">หมายเหตุ</label>
-            <textarea id="status-note" class="form-input" rows="3" placeholder="เพิ่มรายละเอียดเกี่ยวกับการเปลี่ยนสถานะ..."></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="status-notify" class="form-label">แจ้งเตือน</label>
-            <div class="checkbox-group">
-              <input type="checkbox" id="notify-customer" checked>
-              <label for="notify-customer">แจ้งให้ลูกค้าทราบเกี่ยวกับการเปลี่ยนสถานะ</label>
-            </div>
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button class="btn btn-outline modal-close">
-            ยกเลิก
-          </button>
-          <button class="btn btn-primary" id="confirm-update-status">
-            <i class="fas fa-save"></i> บันทึกการเปลี่ยนแปลง
-          </button>
-        </div>
-      </div>
-    `;
-    
-    // เพิ่ม Modal ไปยัง body
-    document.body.appendChild(modal);
-    
-    // ตั้งค่า event listeners สำหรับปุ่มปิด Modal
-    const closeButtons = modal.querySelectorAll('.modal-close');
-    closeButtons.forEach(button => {
+  setupCustomerDetailsEventListeners() {
+    // Create sale buttons
+    const saleButtons = document.querySelectorAll('#create-sale-btn, #create-sale-btn-mobile');
+    saleButtons.forEach(button => {
       button.addEventListener('click', () => {
-        document.body.removeChild(modal);
+        this.handleCreateSale();
       });
     });
     
-    // ตั้งค่า event listeners สำหรับปุ่มยืนยันการอัปเดตสถานะ
-    const confirmButton = modal.querySelector('#confirm-update-status');
-    if (confirmButton) {
-      confirmButton.addEventListener('click', () => {
-        // ในที่นี้เราจะจำลองการอัปเดตสถานะ
-        // ในสถานการณ์จริงควรมีการส่งข้อมูลไปยังเซิร์ฟเวอร์
-        const newStatus = modal.querySelector('#status-select').value;
-        const note = modal.querySelector('#status-note').value;
-        const notify = modal.querySelector('#notify-customer').checked;
-        
-        alert(`อัปเดตสถานะลูกค้าเป็น "${newStatus}" เรียบร้อยแล้ว${notify ? ' และส่งการแจ้งเตือนไปยังลูกค้า' : ''}`);
-        
-        // ปิด Modal
-        document.body.removeChild(modal);
-        
-        // โหลดข้อมูลลูกค้าใหม่อีกครั้ง
-        this.loadCustomerDetails();
+    // Edit customer buttons
+    const editButtons = document.querySelectorAll('#edit-customer-btn, #edit-customer-btn-mobile');
+    editButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        this.handleEditCustomer();
       });
-    }
+    });
   }
   
   /**
-   * แสดง Modal สำหรับการแก้ไขข้อมูลลูกค้า
-   * @param {Object} customer - ข้อมูลลูกค้า
+   * Handle create sale action
+   */
+  handleCreateSale() {
+    if (!this.currentCustomer) return;
+    
+    if (window.InfoHubApp) {
+      window.InfoHubApp.showNotification('กำลังสร้างการขายใหม่...', 'info');
+    }
+    
+    // Redirect to new sale page with customer pre-selected
+    setTimeout(() => {
+      window.location.href = `sale-details.html?action=new&customer=${encodeURIComponent(this.currentCustomer.id)}`;
+    }, 1000);
+  }
+  
+  /**
+   * Handle edit customer action
+   */
+  handleEditCustomer() {
+    if (!this.currentCustomer) return;
+    
+    // Show edit customer modal
+    this.showEditCustomerModal(this.currentCustomer);
+  }
+  
+  /**
+   * Show edit customer modal
    */
   showEditCustomerModal(customer) {
-    // สร้าง Modal element
     const modal = document.createElement('div');
     modal.className = 'modal-backdrop';
     modal.style.display = 'flex';
     
-    // สร้าง HTML สำหรับ Modal
     modal.innerHTML = `
       <div class="modal">
         <div class="modal-header">
           <h2>แก้ไขข้อมูลลูกค้า</h2>
-          <button class="modal-close"><i class="fas fa-times"></i></button>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
         
         <div class="modal-body">
           <div class="form-group">
-            <label for="edit-name" class="form-label">ชื่อลูกค้า</label>
-            <input type="text" id="edit-name" class="form-input" value="${customer.name}">
+            <label for="edit-fname" class="form-label">ชื่อ</label>
+            <input type="text" id="edit-fname" class="form-input" value="${this.escapeHtml(customer.firstName || '')}" required>
           </div>
           
           <div class="form-group">
-            <label for="edit-phone" class="form-label">เบอร์โทรศัพท์</label>
-            <input type="tel" id="edit-phone" class="form-input" value="${customer.phone}">
+            <label for="edit-name" class="form-label">นามสกุล</label>
+            <input type="text" id="edit-name" class="form-input" value="${this.escapeHtml(customer.lastName || '')}" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-tel" class="form-label">เบอร์โทรศัพท์</label>
+            <input type="tel" id="edit-tel" class="form-input" value="${this.escapeHtml(customer.tel || '')}" required>
           </div>
           
           <div class="form-group">
             <label for="edit-email" class="form-label">อีเมล</label>
-            <input type="email" id="edit-email" class="form-input" value="${customer.email}">
+            <input type="email" id="edit-email" class="form-input" value="${this.escapeHtml(customer.email || '')}">
           </div>
           
           <div class="form-group">
             <label for="edit-address" class="form-label">ที่อยู่</label>
-            <textarea id="edit-address" class="form-input" rows="3">${customer.address}</textarea>
+            <textarea id="edit-address" class="form-input" rows="3">${this.escapeHtml(customer.address || '')}</textarea>
           </div>
           
           <div class="form-group">
-            <label for="edit-notes" class="form-label">บันทึกเพิ่มเติม</label>
-            <textarea id="edit-notes" class="form-input" rows="3">${customer.notes || ''}</textarea>
+            <label for="edit-status" class="form-label">สถานะ</label>
+            <select id="edit-status" class="form-input">
+              <option value="interested" ${customer.status === 'interested' ? 'selected' : ''}>สนใจ</option>
+              <option value="contacted" ${customer.status === 'contacted' ? 'selected' : ''}>ติดต่อแล้ว</option>
+              <option value="negotiating" ${customer.status === 'negotiating' ? 'selected' : ''}>กำลังเจรจา</option>
+              <option value="confirmed" ${customer.status === 'confirmed' ? 'selected' : ''}>ยืนยันแล้ว</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="edit-note" class="form-label">หมายเหตุ</label>
+            <textarea id="edit-note" class="form-input" rows="3">${this.escapeHtml(customer.note || '')}</textarea>
           </div>
         </div>
         
         <div class="modal-footer">
-          <button class="btn btn-outline modal-close">
+          <button type="button" class="btn btn-outline modal-close">
             ยกเลิก
           </button>
-          <button class="btn btn-primary" id="confirm-edit-customer">
+          <button type="button" class="btn btn-primary" id="confirm-edit-customer">
             <i class="fas fa-save"></i> บันทึกการเปลี่ยนแปลง
           </button>
         </div>
       </div>
     `;
     
-    // เพิ่ม Modal ไปยัง body
     document.body.appendChild(modal);
     
-    // ตั้งค่า event listeners สำหรับปุ่มปิด Modal
+    // Setup modal event listeners
     const closeButtons = modal.querySelectorAll('.modal-close');
     closeButtons.forEach(button => {
       button.addEventListener('click', () => {
-        document.body.removeChild(modal);
+        modal.remove();
       });
     });
     
-    // ตั้งค่า event listeners สำหรับปุ่มยืนยันการแก้ไขข้อมูล
     const confirmButton = modal.querySelector('#confirm-edit-customer');
     if (confirmButton) {
       confirmButton.addEventListener('click', () => {
-        // ในที่นี้เราจะจำลองการแก้ไขข้อมูล
-        // ในสถานการณ์จริงควรมีการส่งข้อมูลไปยังเซิร์ฟเวอร์
-        const name = modal.querySelector('#edit-name').value;
-        const phone = modal.querySelector('#edit-phone').value;
-        const email = modal.querySelector('#edit-email').value;
-        const address = modal.querySelector('#edit-address').value;
-        const notes = modal.querySelector('#edit-notes').value;
-        
-        alert(`บันทึกการเปลี่ยนแปลงข้อมูลลูกค้า "${name}" เรียบร้อยแล้ว`);
-        
-        // ปิด Modal
-        document.body.removeChild(modal);
-        
-        // โหลดข้อมูลลูกค้าใหม่อีกครั้ง
-        this.loadCustomerDetails();
+        this.handleUpdateCustomer(modal, customer);
       });
+    }
+    
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  }
+  
+  /**
+   * Handle update customer
+   */
+  async handleUpdateCustomer(modalElement, customer) {
+    try {
+      const fname = modalElement.querySelector('#edit-fname').value.trim();
+      const name = modalElement.querySelector('#edit-name').value.trim();
+      const tel = modalElement.querySelector('#edit-tel').value.trim();
+      const email = modalElement.querySelector('#edit-email').value.trim();
+      const address = modalElement.querySelector('#edit-address').value.trim();
+      const status = modalElement.querySelector('#edit-status').value;
+      const note = modalElement.querySelector('#edit-note').value.trim();
+      
+      // Validate required fields
+      if (!fname || !name || !tel) {
+        alert('กรุณากรอกข้อมูลที่จำเป็น (ชื่อ, นามสกุล, เบอร์โทรศัพท์)');
+        return;
+      }
+      
+      // Show loading
+      const confirmButton = modalElement.querySelector('#confirm-edit-customer');
+      const originalText = confirmButton.innerHTML;
+      confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+      confirmButton.disabled = true;
+      
+      // For now, just show success message since we don't have update API yet
+      // In real implementation, call dataService.updateCustomer()
+      
+      // Close modal
+      modalElement.remove();
+      
+      // Show success message
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(`อัปเดตข้อมูลลูกค้า "${fname} ${name}" เรียบร้อยแล้ว`, 'success');
+      }
+      
+      // Reload customer details (in real implementation, use updated data from API)
+      this.loadCustomerDetails(customer.id);
+      
+    } catch (error) {
+      console.error('Error updating customer:', error);
+      
+      // Reset button
+      const confirmButton = modalElement.querySelector('#confirm-edit-customer');
+      if (confirmButton) {
+        confirmButton.innerHTML = '<i class="fas fa-save"></i> บันทึกการเปลี่ยนแปลง';
+        confirmButton.disabled = false;
+      }
+      
+      // Show error message
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(error.message || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้', 'error');
+      } else {
+        alert(error.message || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
+      }
     }
   }
   
   /**
-   * จัดการการค้นหาลูกค้า
+   * Helper methods
    */
-  handleSearch() {
-    // ดึงค่าจากฟอร์มค้นหา
-    const keyword = this.keywordInput?.value || '';
-    const status = this.statusSelect?.value || '';
-    
-    // กำหนดตัวกรองข้อมูล
-    this.filters = {
-      search: keyword,
-      status: status
+  
+  getStatusClass(status) {
+    const statusMap = {
+      'interested': 'status-interested',
+      'contacted': 'status-contacted',
+      'negotiating': 'status-negotiating',
+      'confirmed': 'status-confirmed'
     };
-    
-    // รีเซ็ตหน้าปัจจุบันเป็นหน้าแรก
-    this.currentPage = 1;
-    
-    // โหลดข้อมูลลูกค้าใหม่อีกครั้ง
-    this.loadCustomerList();
+    return statusMap[status] || '';
+  }
+  
+  getStatusText(status) {
+    const statusMap = {
+      'interested': 'สนใจ',
+      'contacted': 'ติดต่อแล้ว',
+      'negotiating': 'กำลังเจรจา',
+      'confirmed': 'ยืนยันแล้ว'
+    };
+    return statusMap[status] || status;
+  }
+  
+  getPriorityClass(priority) {
+    const priorityMap = {
+      'low': 'priority-low',
+      'normal': 'priority-normal',
+      'high': 'priority-high'
+    };
+    return priorityMap[priority] || 'priority-normal';
+  }
+  
+  getPriorityText(priority) {
+    const priorityMap = {
+      'low': 'ต่ำ',
+      'normal': 'ปกติ',
+      'high': 'สูง'
+    };
+    return priorityMap[priority] || 'ปกติ';
+  }
+  
+  getContactMethodText(method) {
+    const methodMap = {
+      'phone': 'โทรศัพท์',
+      'email': 'อีเมล',
+      'line': 'LINE',
+      'facebook': 'Facebook',
+      'website': 'เว็บไซต์'
+    };
+    return methodMap[method] || 'โทรศัพท์';
   }
   
   /**
-   * จัดการการล้างการค้นหา
+   * Add custom styles for customer details
    */
-  handleClearSearch() {
-    // รีเซ็ตค่าในฟอร์มค้นหา
-    if (this.keywordInput) this.keywordInput.value = '';
-    if (this.statusSelect) this.statusSelect.value = '';
+  addCustomerDetailsStyles() {
+    const styleId = 'customer-details-styles';
+    if (document.getElementById(styleId)) return;
     
-    // รีเซ็ตตัวกรองข้อมูล
-    this.filters = {
-      search: '',
-      status: ''
-    };
-    
-    // รีเซ็ตหน้าปัจจุบันเป็นหน้าแรก
-    this.currentPage = 1;
-    
-    // โหลดข้อมูลลูกค้าใหม่อีกครั้ง
-    this.loadCustomerList();
-  }
-  
-  /**
-   * จัดการการเพิ่มลูกค้าใหม่
-   */
-  handleAddCustomer() {
-    // สร้าง Modal element
-    const modal = document.createElement('div');
-    modal.className = 'modal-backdrop';
-    modal.style.display = 'flex';
-    
-    // สร้าง HTML สำหรับ Modal
-    modal.innerHTML = `
-      <div class="modal">
-        <div class="modal-header">
-          <h2>เพิ่มลูกค้าใหม่</h2>
-          <button class="modal-close"><i class="fas fa-times"></i></button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="new-name" class="form-label">ชื่อลูกค้า</label>
-            <input type="text" id="new-name" class="form-input" placeholder="กรอกชื่อลูกค้า" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="new-phone" class="form-label">เบอร์โทรศัพท์</label>
-            <input type="tel" id="new-phone" class="form-input" placeholder="กรอกเบอร์โทรศัพท์" required>
-          </div>
-          
-          <div class="form-group">
-            <label for="new-email" class="form-label">อีเมล</label>
-            <input type="email" id="new-email" class="form-input" placeholder="กรอกอีเมล">
-          </div>
-          
-          <div class="form-group">
-            <label for="new-address" class="form-label">ที่อยู่</label>
-            <textarea id="new-address" class="form-input" rows="3" placeholder="กรอกที่อยู่"></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="new-status" class="form-label">สถานะ</label>
-            <select id="new-status" class="form-input">
-              <option value="สอบถามข้อมูล">สอบถามข้อมูล</option>
-              <option value="ลูกค้าสนใจ">ลูกค้าสนใจ</option>
-              <option value="ส่งใบเสนอราคา">ส่งใบเสนอราคา</option>
-              <option value="ต่อรองราคา">ต่อรองราคา</option>
-              <option value="ยืนยันการสั่งซื้อ">ยืนยันการสั่งซื้อ</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
-            <label for="new-notes" class="form-label">บันทึกเพิ่มเติม</label>
-            <textarea id="new-notes" class="form-input" rows="3" placeholder="กรอกบันทึกเพิ่มเติม"></textarea>
-          </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button class="btn btn-outline modal-close">
-            ยกเลิก
-          </button>
-          <button class="btn btn-primary" id="confirm-add-customer">
-            <i class="fas fa-save"></i> บันทึกข้อมูลลูกค้า
-          </button>
-        </div>
-      </div>
-    `;
-    
-    // เพิ่ม Modal ไปยัง body
-    document.body.appendChild(modal);
-    
-    // ตั้งค่า event listeners สำหรับปุ่มปิด Modal
-    const closeButtons = modal.querySelectorAll('.modal-close');
-    closeButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        document.body.removeChild(modal);
-      });
-    });
-    
-    // ตั้งค่า event listeners สำหรับปุ่มยืนยันการเพิ่มลูกค้า
-    const confirmButton = modal.querySelector('#confirm-add-customer');
-    if (confirmButton) {
-      confirmButton.addEventListener('click', () => {
-        // ในที่นี้เราจะจำลองการเพิ่มลูกค้า
-        // ในสถานการณ์จริงควรมีการส่งข้อมูลไปยังเซิร์ฟเวอร์
-        const name = modal.querySelector('#new-name').value;
-        const phone = modal.querySelector('#new-phone').value;
-        const email = modal.querySelector('#new-email').value;
-        const address = modal.querySelector('#new-address').value;
-        const status = modal.querySelector('#new-status').value;
-        const notes = modal.querySelector('#new-notes').value;
-        
-        // ตรวจสอบข้อมูลที่จำเป็น
-        if (!name || !phone) {
-          alert('กรุณากรอกชื่อและเบอร์โทรศัพท์ของลูกค้า');
-          return;
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      .customer-details-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+      
+      .customer-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .customer-title {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.5rem;
+      }
+      
+      .customer-code {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      .code-value {
+        font-family: monospace;
+        font-weight: 600;
+        color: #374151;
+      }
+      
+      .customer-status {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      
+      .status-badge, .priority-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      
+      .status-interested { background: #dbeafe; color: #1e40af; }
+      .status-contacted { background: #fef3c7; color: #92400e; }
+      .status-negotiating { background: #fed7d7; color: #c53030; }
+      .status-confirmed { background: #d1fae5; color: #065f46; }
+      
+      .priority-low { background: #f3f4f6; color: #6b7280; }
+      .priority-normal { background: #dbeafe; color: #1e40af; }
+      .priority-high { background: #fecaca; color: #dc2626; }
+      
+      .customer-actions-header {
+        display: flex;
+        gap: 1rem;
+        flex-shrink: 0;
+      }
+      
+      .btn-large {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+      
+      .customer-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        margin-bottom: 2rem;
+      }
+      
+      .customer-info-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
+      }
+      
+      .card-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      
+      .card-title i {
+        color: #3b82f6;
+      }
+      
+      .contact-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      
+      .contact-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .contact-label {
+        color: #6b7280;
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+      
+      .contact-value {
+        font-weight: 600;
+        color: #374151;
+      }
+      
+      .contact-value a {
+        color: #3b82f6;
+        text-decoration: none;
+      }
+      
+      .contact-value a:hover {
+        text-decoration: underline;
+      }
+      
+      .customer-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+      }
+      
+      .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: #f9fafb;
+        border-radius: 0.5rem;
+      }
+      
+      .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+      }
+      
+      .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.25rem;
+      }
+      
+      .stat-description {
+        font-size: 0.75rem;
+        color: #9ca3af;
+      }
+      
+      .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .timeline-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+      
+      .timeline-icon {
+        width: 40px;
+        height: 40px;
+        background: #3b82f6;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      
+      .timeline-content {
+        flex: 1;
+      }
+      
+      .timeline-title {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 0.25rem;
+      }
+      
+      .timeline-description {
+        color: #6b7280;
+        font-size: 0.875rem;
+        margin-bottom: 0.25rem;
+      }
+      
+      .timeline-date {
+        color: #9ca3af;
+        font-size: 0.75rem;
+      }
+      
+      .customer-notes {
+        background: #f9fafb;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #3b82f6;
+      }
+      
+      .customer-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+      
+      .tag {
+        background: #e5e7eb;
+        color: #374151;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+      }
+      
+      .customer-actions-mobile {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: white;
+        padding: 1rem;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        gap: 1rem;
+      }
+      
+      .btn-mobile {
+        flex: 1;
+        padding: 0.75rem;
+        font-weight: 600;
+      }
+      
+      /* Form Styles */
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+      
+      .form-label {
+        display: block;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+      }
+      
+      .form-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      
+      .form-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      
+      .form-note {
+        color: #6b7280;
+        font-size: 0.75rem;
+        font-style: italic;
+        margin-top: 0.25rem;
+      }
+      
+      /* Modal Styles */
+      .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      
+      .modal {
+        background: white;
+        border-radius: 0.5rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .modal-header h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+      }
+      
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        color: #6b7280;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        transition: color 0.2s;
+      }
+      
+      .modal-close:hover {
+        color: #374151;
+      }
+      
+      .modal-body {
+        padding: 1.5rem;
+        flex: 1;
+      }
+      
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        padding: 1.5rem;
+        border-top: 1px solid #e5e7eb;
+      }
+      
+      /* Data Table Styles */
+      .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      
+      .data-table th,
+      .data-table td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .data-table th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.875rem;
+      }
+      
+      .data-table tbody tr:hover {
+        background: #f9fafb;
+      }
+      
+      .customer-name {
+        color: #3b82f6;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      
+      .customer-name:hover {
+        text-decoration: underline;
+      }
+      
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+      }
+      
+      .btn-icon {
+        background: none;
+        border: 1px solid #d1d5db;
+        color: #6b7280;
+        padding: 0.5rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .btn-icon:hover {
+        background: #f3f4f6;
+        color: #374151;
+        border-color: #9ca3af;
+      }
+      
+      /* Pagination Styles */
+      .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 2rem;
+      }
+      
+      .pagination-button {
+        background: white;
+        border: 1px solid #d1d5db;
+        color: #6b7280;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.875rem;
+      }
+      
+      .pagination-button:hover:not(.disabled) {
+        background: #f3f4f6;
+        color: #374151;
+        border-color: #9ca3af;
+      }
+      
+      .pagination-button.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+      }
+      
+      .pagination-button.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      
+      .pagination-pages {
+        display: flex;
+        gap: 0.25rem;
+      }
+      
+      /* Status Styles */
+      .status {
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .customer-header {
+          flex-direction: column;
+          gap: 1rem;
+          align-items: flex-start;
         }
         
-        alert(`เพิ่มลูกค้า "${name}" เรียบร้อยแล้ว`);
+        .customer-actions-header {
+          display: none;
+        }
         
-        // ปิด Modal
-        document.body.removeChild(modal);
+        .customer-actions-mobile {
+          display: flex;
+        }
         
-        // โหลดข้อมูลลูกค้าใหม่อีกครั้ง
-        this.loadCustomerList();
-      });
+        .customer-content {
+          grid-template-columns: 1fr;
+          gap: 1rem;
+        }
+        
+        .customer-title {
+          font-size: 1.5rem;
+        }
+        
+        .customer-stats {
+          grid-template-columns: 1fr;
+        }
+        
+        .customer-details-container {
+          padding: 0.5rem;
+          margin-bottom: 80px;
+        }
+        
+        .contact-item {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 0.25rem;
+        }
+        
+        .data-table {
+          font-size: 0.875rem;
+        }
+        
+        .data-table th,
+        .data-table td {
+          padding: 0.5rem;
+        }
+        
+        .action-buttons {
+          flex-direction: column;
+        }
+        
+        .modal {
+          width: 95%;
+        }
+        
+        .modal-header,
+        .modal-body,
+        .modal-footer {
+          padding: 1rem;
+        }
+      }
+      
+      @media (max-width: 640px) {
+        .customer-stats {
+          grid-template-columns: 1fr;
+          gap: 0.5rem;
+        }
+        
+        .stat-item {
+          padding: 0.75rem;
+        }
+        
+        .timeline-item {
+          gap: 0.75rem;
+        }
+        
+        .timeline-icon {
+          width: 30px;
+          height: 30px;
+          font-size: 0.875rem;
+        }
+      }
+    `;
+    
+    document.head.appendChild(style);
+  }
+  
+  /**
+   * Show loading state
+   */
+  showLoading() {
+    this.isLoading = true;
+    if (this.loadingIndicator) {
+      this.loadingIndicator.style.display = 'flex';
     }
   }
-}
-
-// สร้าง instance ของ CustomerController เมื่อหน้าเว็บโหลดเสร็จสมบูรณ์
-document.addEventListener('DOMContentLoaded', () => {
-  const customerController = new CustomerController();
-});
-
-export default CustomerController;
+  
+  /**
+   * Hide loading state
+   */
+  hideLoading() {
+    this.isLoading = false;
+    if (this.loadingIndicator) {
+      this.loadingIndicator.style.display = 'none';
+    }
+  }
+  
+  /**
+   * Show error message
+   */
+  showError(message) {
+    if (this.errorMessage) {
+      this.errorMessage.innerHTML = `
+        <div class="error-content">
+          <i class="fas fa-exclamation-triangle"></i>
+          <div class="error-text">
+            <h3>เกิดข้อผิดพลาด</h3>
+            <p>${this.escapeHtml(message)}</p>
+          </div>
+          <button class="btn btn-primary retry-btn">
+            <i class="fas fa-redo"></i> ลองใหม่
+          </button>
+        </div>
+      `;
+      this.errorMessage.style.display = 'block';
+    }
+    
+    this.hideEmptyState();
+    if (this.customerListContainer) {
+      this.customerListContainer.innerHTML = '';
+    }
+  }
+  
+  /**
+   * Show empty state
+   */
+  showEmptyState() {
+    if (this.emptyState) {
+      this.emptyState.style.display = 'block';
+    }
+    if (this.customerListContainer) {
+      this.customerListContainer.innerHTML = '';
+    }
+  }
+  
+  /**
+   * Hide empty state
+   */
+  hideEmptyState() {
+    if (this.emptyState) {
+      this.emptyState.style.display = 'none';
+    }
+  }
+  
+  /**
+   * Update results information
+   */
+  updateResultsInfo(count, title) {
+    if (this.resultsTitle) {
+      this.resultsTitle.textContent = title;
+    }
+    
+    if (this.resultsCount) {
+      this.resultsCount.textContent = `${count} รายการ`;
+    }
+  }
+  
+  /**
+   * Escape HTML to prevent XSS
+   */
+  escapeHtml(text) {
+    if (typeof text !== 'string') return String(text);
+    
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+ }
+ 
+ // Initialize customer controller
+ const customerController = new CustomerController();
+ 
+ export default customerController;
