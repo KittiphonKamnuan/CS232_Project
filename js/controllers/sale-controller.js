@@ -214,17 +214,6 @@ class SaleController {
           <h1>สร้างการขายใหม่</h1>
           <span class="sale-subtitle">กรอกข้อมูลการขายและลูกค้า</span>
         </div>
-        <div class="sale-actions">
-          <button class="btn btn-outline" id="cancel-sale">
-            <i class="fas fa-times"></i> ยกเลิก
-          </button>
-          <button class="btn btn-primary" id="save-draft" disabled>
-            <i class="fas fa-save"></i> บันทึกร่าง
-          </button>
-          <button class="btn btn-success" id="create-sale" disabled>
-            <i class="fas fa-check"></i> สร้างการขาย
-          </button>
-        </div>
       </div>
       
       <!-- Customer Selection -->
