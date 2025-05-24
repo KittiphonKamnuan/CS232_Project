@@ -107,20 +107,10 @@ class DataService {
    * @returns {Promise<Array>} - ข้อมูลลูกค้าทั้งหมด
    */
   async getCustomers(filters = {}) {
-    try {
-      const queryParams = new URLSearchParams(filters);
-      const url = `${API_ENDPOINTS.CUSTOMERS}?${queryParams}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch customers: HTTP ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (err) {
-      console.error('Error loading customers:', err);
-      throw new Error('ไม่สามารถโหลดข้อมูลลูกค้าได้ ระบบอยู่ระหว่างการพัฒนา');
-    }
+    // Skip API call since customers API is not ready
+    // Return empty array for now
+    console.log('Customers API not available - returning empty array');
+    return [];
   }
   
   /**
@@ -129,19 +119,9 @@ class DataService {
    * @returns {Promise<Object>} - ข้อมูลลูกค้า
    */
   async getCustomerById(customerId) {
-    try {
-      const url = `${API_ENDPOINTS.CUSTOMERS}/${encodeURIComponent(customerId)}`;
-      const response = await fetch(url);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch customer: HTTP ${response.status}`);
-      }
-      
-      return await response.json();
-    } catch (err) {
-      console.error('Error loading customer by ID:', err);
-      throw new Error('ไม่สามารถโหลดข้อมูลลูกค้าได้ ระบบอยู่ระหว่างการพัฒนา');
-    }
+    // Skip API call since customers API is not ready
+    console.log('Customers API not available - customer ID:', customerId);
+    throw new Error('ระบบลูกค้าอยู่ระหว่างการพัฒนา');
   }
   
   /**

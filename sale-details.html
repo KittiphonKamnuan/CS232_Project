@@ -10,39 +10,42 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body class="bg-gray-100">
+  <!-- App Preloader -->
+  <div id="app-preloader" class="app-preloader">
+    <div class="spinner-container">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>กำลังโหลด InfoHub 360...</p>
+    </div>
+  </div>
+
   <div class="flex flex-col h-screen">
     <!-- Top Navigation -->
     <nav class="navbar">
       <div class="container">
         <div class="logo">
-          <i class="fas fa-cube"></i>
-          <span>InfoHub 360</span>
+          <a href="index.html">
+            <i class="fas fa-cube"></i>
+            <span>InfoHub 360</span>
+          </a>
         </div>
         <div class="user-section">
-          <span class="user-greeting">สวัสดี, คุณสมชาย (พนักงานขาย)</span>
+          <span class="user-greeting">สวัสดี, ผู้ใช้งาน (พนักงานขาย)</span>
           <div class="notifications">
             <i class="fas fa-bell"></i>
-            <span class="notification-count">3</span>
+            <span class="notification-count">0</span>
             <div class="notification-dropdown">
               <div class="notification-header">
                 <p>การแจ้งเตือน</p>
               </div>
-              <div class="notification-item">
-                <p class="notification-title">ตรวจสอบลูกค้า: คุณนภา</p>
-                <p class="notification-desc">ส่งใบเสนอราคาแล้ว 2 วัน</p>
-              </div>
-              <div class="notification-item">
-                <p class="notification-title">สต๊อกใกล้หมด: TV Samsung QN90C</p>
-                <p class="notification-desc">เหลือเพียง 2 เครื่อง</p>
-              </div>
-              <div class="notification-item">
-                <p class="notification-title">โปรโมชันใหม่: เครื่องใช้ไฟฟ้า</p>
-                <p class="notification-desc">เริ่ม 15 เม.ย. - 30 เม.ย. 2568</p>
+              <div class="notification-empty">
+                <p>ไม่มีการแจ้งเตือนใหม่</p>
               </div>
             </div>
           </div>
           <div class="user-avatar">
-            <span>ส</span>
+            <a href="profile.html">
+              <span>U</span>
+            </a>
           </div>
         </div>
       </div>
@@ -53,19 +56,19 @@
       <!-- Sidebar -->
       <div class="sidebar">
         <div class="sidebar-menu">
-          <a href="index.html" class="menu-item" data-tab="search">
+          <a href="index.html" class="menu-item">
             <i class="fas fa-search"></i>
             <span>ค้นหาสินค้า</span>
           </a>
-          <a href="customer-list.html" class="menu-item" data-tab="customers">
+          <a href="customer-list.html" class="menu-item">
             <i class="fas fa-users"></i>
             <span>ลูกค้าของฉัน</span>
           </a>
-          <a href="sales-report.html" class="menu-item active" data-tab="sales">
+          <a href="sales-report.html" class="menu-item active">
             <i class="fas fa-chart-line"></i>
             <span>ติดตามการขาย</span>
           </a>
-          <a href="document-viewer.html" class="menu-item" data-tab="documents">
+          <a href="document-viewer.html" class="menu-item">
             <i class="fas fa-file-pdf"></i>
             <span>เอกสาร</span>
           </a>
@@ -75,7 +78,7 @@
             <i class="fas fa-cog"></i>
             <span>ตั้งค่า</span>
           </a>
-          <a href="login.html" class="menu-item">
+          <a href="login.html" class="menu-item logout-link">
             <i class="fas fa-sign-out-alt"></i>
             <span>ออกจากระบบ</span>
           </a>
@@ -92,372 +95,144 @@
         </div>
         
         <!-- Loading Indicator -->
-        <div id="loading-indicator" class="loading-overlay">
+        <div id="loading-indicator" class="loading-overlay" style="display: none;">
           <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
           </div>
+          <p>กำลังโหลดข้อมูลการขาย...</p>
         </div>
         
         <!-- Error Message -->
-        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="error-message" class="error-message" style="display: none;">
+          <div class="error-content">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="error-text">
+              <h3>เกิดข้อผิดพลาด</h3>
+              <p>ไม่สามารถโหลดข้อมูลการขายได้ กรุณาลองใหม่อีกครั้ง</p>
+            </div>
+            <button class="btn btn-primary retry-btn" id="retry-button">
+              <i class="fas fa-redo"></i> ลองใหม่
+            </button>
+          </div>
+        </div>
         
         <!-- Sale Details Container -->
         <div id="sale-details" class="sale-details-container">
-          <!-- Sale Header -->
-          <div class="sale-header">
-            <div class="sale-title">
-              <h1>รายการขาย #SALE-123456</h1>
-              <span class="sale-date">วันที่: 14 เม.ย. 2568</span>
-            </div>
-            <div class="sale-status">
-              <span class="status status-success">ยืนยันการสั่งซื้อ</span>
-            </div>
-            <div class="sale-actions">
-              <button class="btn btn-outline">
-                <i class="fas fa-print"></i> พิมพ์
-              </button>
-              <button class="btn btn-primary">
-                <i class="fas fa-file-pdf"></i> สร้าง PDF
-              </button>
-              <button class="btn btn-success" id="update-status-btn">
-                <i class="fas fa-sync-alt"></i> อัปเดตสถานะ
-              </button>
-            </div>
-          </div>
-          
-          <!-- Sale Details Grid -->
-          <div class="sale-details-grid">
-            <!-- Customer Information -->
-            <div class="detail-card">
-              <div class="card-header">
-                <h3><i class="fas fa-user"></i> ข้อมูลลูกค้า</h3>
-                <a href="customer-details.html?id=CUS-123456" class="btn-link">
-                  <i class="fas fa-external-link-alt"></i> ดูรายละเอียด
-                </a>
-              </div>
-              <div class="card-body">
-                <p><strong>ชื่อ:</strong> คุณสมศักดิ์ ใจดี</p>
-                <p><strong>เบอร์โทรศัพท์:</strong> 062-987-6543</p>
-                <p><strong>อีเมล:</strong> somsak@example.com</p>
-                <p><strong>ที่อยู่:</strong> 123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110</p>
-              </div>
-            </div>
-            
-            <!-- Sale Summary -->
-            <div class="detail-card">
-              <div class="card-header">
-                <h3><i class="fas fa-receipt"></i> สรุปการขาย</h3>
-              </div>
-              <div class="card-body">
-                <p><strong>รวมมูลค่าสินค้า:</strong> <span class="price">฿45,990</span></p>
-                <p><strong>ส่วนลด:</strong> <span class="discount">฿0</span></p>
-                <p><strong>ภาษีมูลค่าเพิ่ม (7%):</strong> <span class="tax">รวมในราคา</span></p>
-                <p class="total-amount"><strong>ยอดรวมทั้งสิ้น:</strong> <span class="price">฿45,990</span></p>
-              </div>
-            </div>
-            
-            <!-- Delivery Information -->
-            <div class="detail-card">
-              <div class="card-header">
-                <h3><i class="fas fa-truck"></i> ข้อมูลการจัดส่ง</h3>
-              </div>
-              <div class="card-body">
-                <p><strong>วิธีการจัดส่ง:</strong> บริการส่งถึงบ้าน</p>
-                <p><strong>กำหนดส่ง:</strong> 16 เม.ย. 2568</p>
-                <p><strong>ที่อยู่จัดส่ง:</strong> 123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110</p>
-                <p><strong>หมายเหตุ:</strong> โทรก่อนจัดส่ง 1 ชั่วโมง</p>
-              </div>
-            </div>
-            
-            <!-- Payment Information -->
-            <div class="detail-card">
-              <div class="card-header">
-                <h3><i class="fas fa-credit-card"></i> ข้อมูลการชำระเงิน</h3>
-              </div>
-              <div class="card-body">
-                <p><strong>วิธีการชำระเงิน:</strong> บัตรเครดิต</p>
-                <p><strong>สถานะ:</strong> <span class="status status-success">ชำระเงินแล้ว</span></p>
-                <p><strong>วันที่ชำระเงิน:</strong> 14 เม.ย. 2568</p>
-                <p><strong>เลขที่อ้างอิง:</strong> REF123456789</p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Product Items -->
-          <div class="card">
-            <h2>รายการสินค้า</h2>
-            
-            <div class="table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>สินค้า</th>
-                    <th>รหัสสินค้า</th>
-                    <th>ราคาต่อหน่วย</th>
-                    <th>จำนวน</th>
-                    <th>ส่วนลด</th>
-                    <th>ราคารวม</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>
-                      <div class="product-brief">
-                        <div class="product-thumbnail">
-                          <img src="/assets/images/product-placeholder.jpg" alt="TV Samsung">
-                        </div>
-                        <p class="product-name">Samsung QN90C 55" QLED 4K Smart TV</p>
-                      </div>
-                    </td>
-                    <td>TV-SAM-QN90C-55</td>
-                    <td>฿45,990</td>
-                    <td>1</td>
-                    <td>฿0 (0%)</td>
-                    <td class="price">฿45,990</td>
-                  </tr>
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colspan="5" class="text-right"><strong>รวมทั้งสิ้น</strong></td>
-                    <td class="price"><strong>฿45,990</strong></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-          
-          <!-- Sale History -->
-          <div class="card">
-            <h2>ประวัติการดำเนินการ</h2>
-            
-            <div class="history-timeline">
-              <div class="timeline-item">
-                <div class="timeline-point success"></div>
-                <div class="timeline-content">
-                  <h3>ยืนยันการสั่งซื้อ</h3>
-                  <p class="timeline-date">14 เม.ย. 2568, 09:20 น.</p>
-                  <p>ลูกค้ายืนยันการสั่งซื้อและชำระเงินเรียบร้อยแล้ว</p>
-                  <p class="timeline-user">โดย: คุณสมชาย (พนักงานขาย)</p>
-                </div>
-              </div>
-              
-              <div class="timeline-item">
-                <div class="timeline-point warning"></div>
-                <div class="timeline-content">
-                  <h3>ส่งใบเสนอราคา</h3>
-                  <p class="timeline-date">13 เม.ย. 2568, 14:30 น.</p>
-                  <p>ส่งใบเสนอราคาให้ลูกค้าผ่านทางอีเมล</p>
-                  <p class="timeline-user">โดย: คุณสมชาย (พนักงานขาย)</p>
-                </div>
-              </div>
-              
-              <div class="timeline-item">
-                <div class="timeline-point info"></div>
-                <div class="timeline-content">
-                  <h3>ลูกค้าสนใจ</h3>
-                  <p class="timeline-date">12 เม.ย. 2568, 11:15 น.</p>
-                  <p>ลูกค้าแสดงความสนใจในสินค้า Samsung QN90C 55"</p>
-                  <p class="timeline-user">โดย: คุณสมชาย (พนักงานขาย)</p>
-                </div>
-              </div>
-              
-              <div class="timeline-item">
-                <div class="timeline-point info"></div>
-                <div class="timeline-content">
-                  <h3>สอบถามข้อมูล</h3>
-                  <p class="timeline-date">10 เม.ย. 2568, 09:45 น.</p>
-                  <p>ลูกค้าสอบถามข้อมูลเกี่ยวกับทีวี Samsung</p>
-                  <p class="timeline-user">โดย: คุณสมชาย (พนักงานขาย)</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Notes and Comments -->
-          <div class="card">
-            <h2>บันทึกและความคิดเห็น</h2>
-            
-            <div class="comment-section">
-              <div class="comment-list">
-                <div class="comment-item">
-                  <div class="comment-avatar">
-                    <span>ส</span>
-                  </div>
-                  <div class="comment-content">
-                    <div class="comment-header">
-                      <h3>คุณสมชาย (พนักงานขาย)</h3>
-                      <span class="comment-date">14 เม.ย. 2568, 10:30 น.</span>
-                    </div>
-                    <p class="comment-text">ลูกค้าขอให้จัดส่งในวันพฤหัสบดีที่ 16 เม.ย. และแจ้งเตือนก่อนจัดส่ง 1 ชั่วโมง</p>
-                  </div>
-                </div>
-                
-                <div class="comment-item">
-                  <div class="comment-avatar">
-                    <span>ส</span>
-                  </div>
-                  <div class="comment-content">
-                    <div class="comment-header">
-                      <h3>คุณสมชาย (พนักงานขาย)</h3>
-                      <span class="comment-date">13 เม.ย. 2568, 15:45 น.</span>
-                    </div>
-                    <p class="comment-text">ลูกค้ายืนยันว่าสนใจรุ่น QN90C เนื่องจากต้องการคุณภาพหน้าจอที่ดีสำหรับดูหนังและเล่นเกม</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="comment-form">
-                <h3>เพิ่มบันทึก</h3>
-                <textarea id="comment-input" placeholder="พิมพ์ข้อความหรือบันทึกของคุณที่นี่..."></textarea>
-                <button class="btn btn-primary" id="add-comment-btn">
-                  <i class="fas fa-plus"></i> เพิ่มบันทึก
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Related Documents -->
-          <div class="card">
-            <h2>เอกสารที่เกี่ยวข้อง</h2>
-            
-            <div class="document-list">
-              <div class="document-item">
-                <div class="document-icon">
-                  <i class="fas fa-file-pdf"></i>
-                </div>
-                <div class="document-info">
-                  <h3>ใบเสนอราคา</h3>
-                  <p class="document-date">13 เม.ย. 2568</p>
-                </div>
-                <div class="document-actions">
-                  <button class="btn-icon" title="ดูเอกสาร">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                  <button class="btn-icon" title="ดาวน์โหลด">
-                    <i class="fas fa-download"></i>
-                  </button>
-                </div>
-              </div>
-              
-              <div class="document-item">
-                <div class="document-icon">
-                  <i class="fas fa-file-pdf"></i>
-                </div>
-                <div class="document-info">
-                  <h3>ใบสั่งซื้อ</h3>
-                  <p class="document-date">14 เม.ย. 2568</p>
-                </div>
-                <div class="document-actions">
-                  <button class="btn-icon" title="ดูเอกสาร">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                  <button class="btn-icon" title="ดาวน์โหลด">
-                    <i class="fas fa-download"></i>
-                  </button>
-                </div>
-              </div>
-              
-              <div class="document-item">
-                <div class="document-icon">
-                  <i class="fas fa-file-pdf"></i>
-                </div>
-                <div class="document-info">
-                  <h3>ใบเสร็จรับเงิน</h3>
-                  <p class="document-date">14 เม.ย. 2568</p>
-                </div>
-                <div class="document-actions">
-                  <button class="btn-icon" title="ดูเอกสาร">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                  <button class="btn-icon" title="ดาวน์โหลด">
-                    <i class="fas fa-download"></i>
-                  </button>
-                </div>
-              </div>
-              
-              <div class="document-item">
-                <div class="document-icon">
-                  <i class="fas fa-file-pdf"></i>
-                </div>
-                <div class="document-info">
-                  <h3>สเปคสินค้า Samsung QN90C</h3>
-                  <p class="document-date">13 เม.ย. 2568</p>
-                </div>
-                <div class="document-actions">
-                  <button class="btn-icon" title="ดูเอกสาร">
-                    <i class="fas fa-eye"></i>
-                  </button>
-                  <button class="btn-icon" title="ดาวน์โหลด">
-                    <i class="fas fa-download"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            
-            <div class="text-center mt-4">
-              <button class="btn btn-outline">
-                <i class="fas fa-upload"></i> อัปโหลดเอกสารเพิ่มเติม
-              </button>
-            </div>
-          </div>
+          <!-- Content will be loaded by JavaScript -->
         </div>
       </div>
     </div>
   </div>
   
   <!-- Update Status Modal -->
-  <div id="update-status-modal" class="modal-backdrop" style="display: none;">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>อัปเดตสถานะการขาย</h2>
-        <button class="modal-close"><i class="fas fa-times"></i></button>
-      </div>
-      
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="status-select" class="form-label">เลือกสถานะใหม่</label>
-          <select id="status-select" class="form-input">
-            <option value="inquiry">สอบถามข้อมูล</option>
-            <option value="interested">ลูกค้าสนใจ</option>
-            <option value="quotation">ส่งใบเสนอราคา</option>
-            <option value="negotiation">ต่อรองราคา</option>
-            <option value="confirmed" selected>ยืนยันการสั่งซื้อ</option>
-            <option value="delivery">ส่งมอบสินค้า</option>
-            <option value="after_sale">บริการหลังการขาย</option>
-            <option value="cancelled">ยกเลิกการขาย</option>
-          </select>
+  <template id="update-status-modal-template">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>อัปเดตสถานะการขาย</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
         </div>
         
-        <div class="form-group">
-          <label for="status-note" class="form-label">หมายเหตุ</label>
-          <textarea id="status-note" class="form-input" rows="3" placeholder="เพิ่มรายละเอียดเกี่ยวกับการเปลี่ยนสถานะ..."></textarea>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="status-select" class="form-label">เลือกสถานะใหม่</label>
+            <select id="status-select" class="form-input">
+              <option value="สอบถามข้อมูล">สอบถามข้อมูล</option>
+              <option value="ลูกค้าสนใจ">ลูกค้าสนใจ</option>
+              <option value="ส่งใบเสนอราคา">ส่งใบเสนอราคา</option>
+              <option value="ต่อรองราคา">ต่อรองราคา</option>
+              <option value="ยืนยันการสั่งซื้อ">ยืนยันการสั่งซื้อ</option>
+              <option value="ส่งมอบสินค้า">ส่งมอบสินค้า</option>
+              <option value="บริการหลังการขาย">บริการหลังการขาย</option>
+              <option value="ยกเลิกการขาย">ยกเลิกการขาย</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="status-note" class="form-label">หมายเหตุ</label>
+            <textarea id="status-note" class="form-input" rows="3" placeholder="เพิ่มรายละเอียดเกี่ยวกับการเปลี่ยนสถานะ..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <p class="form-label">แจ้งเตือน</p>
+            <div class="checkbox-group">
+              <input type="checkbox" id="notify-customer" checked>
+              <label for="notify-customer">แจ้งให้ลูกค้าทราบเกี่ยวกับการเปลี่ยนสถานะ</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="notify-manager">
+              <label for="notify-manager">แจ้งให้ผู้จัดการทราบเกี่ยวกับการเปลี่ยนสถานะ</label>
+            </div>
+            <small class="form-note">* ระบบการแจ้งเตือนอยู่ระหว่างการพัฒนา</small>
+          </div>
         </div>
         
-        <div class="form-group">
-          <label for="status-notify" class="form-label">แจ้งเตือน</label>
-          <div class="checkbox-group">
-            <input type="checkbox" id="notify-customer" checked>
-            <label for="notify-customer">แจ้งให้ลูกค้าทราบเกี่ยวกับการเปลี่ยนสถานะ</label>
-          </div>
-          <div class="checkbox-group">
-            <input type="checkbox" id="notify-manager">
-            <label for="notify-manager">แจ้งให้ผู้จัดการทราบเกี่ยวกับการเปลี่ยนสถานะ</label>
-          </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-update-status">
+            <i class="fas fa-save"></i> บันทึกการเปลี่ยนแปลง
+          </button>
         </div>
-      </div>
-      
-      <div class="modal-footer">
-        <button class="btn btn-outline modal-close">
-          ยกเลิก
-        </button>
-        <button class="btn btn-primary" id="confirm-update-status">
-          <i class="fas fa-save"></i> บันทึกการเปลี่ยนแปลง
-        </button>
       </div>
     </div>
-  </div>
-  
-  <!-- Load Scripts -->
+  </template>
+
+  <!-- Add New Customer Modal Template -->
+  <template id="new-customer-modal-template">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>เพิ่มลูกค้าใหม่</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="new-customer-name" class="form-label">ชื่อลูกค้า *</label>
+            <input type="text" id="new-customer-name" class="form-input" placeholder="กรอกชื่อลูกค้า" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-customer-phone" class="form-label">เบอร์โทรศัพท์ *</label>
+            <input type="tel" id="new-customer-phone" class="form-input" placeholder="กรอกเบอร์โทรศัพท์" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-customer-email" class="form-label">อีเมล</label>
+            <input type="email" id="new-customer-email" class="form-input" placeholder="กรอกอีเมล">
+          </div>
+          
+          <div class="form-group">
+            <label for="new-customer-address" class="form-label">ที่อยู่</label>
+            <textarea id="new-customer-address" class="form-input" rows="3" placeholder="กรอกที่อยู่"></textarea>
+          </div>
+          
+          <small class="form-note">* ข้อมูลที่จำเป็นต้องกรอก</small>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-add-customer">
+            <i class="fas fa-save"></i> บันทึกข้อมูลลูกค้า
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- JavaScript Files -->
+  <script type="module" src="js/services/data-service.js"></script>
+  <script src="js/scripts.js"></script>
   <script type="module" src="js/controllers/sale-controller.js"></script>
+  <script type="module" src="js/auth-guard.js" defer></script>
+
 </body>
 </html>

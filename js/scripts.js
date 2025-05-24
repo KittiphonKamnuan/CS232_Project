@@ -1,776 +1,518 @@
 /**
- * InfoHub 360 - Main JavaScript
+ * InfoHub 360 - Main Scripts
  * 
- * This file contains all the JavaScript functionality for the InfoHub 360 application
- * including navigation, search, modals, and other interactive features.
+ * ไฟล์นี้ใช้สำหรับฟังก์ชันพื้นฐานและการทำงานหลักของแอปพลิเคชัน
+ * เช่น navigation, modal, search และฟีเจอร์ทั่วไป
  */
 
-// Wait for the DOM to be fully loaded
+// Global variables
+let isAppReady = false;
+
+// Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-  // Tab Navigation
-  initTabNavigation();
+  console.log('InfoHub 360 - Initializing...');
   
-  // Modal functionality
-  initModals();
-  
-  // Search functionality
-  initSearch();
-  
-  // Pipeline interactions
-  initPipeline();
-  
-  // Document sharing
-  initDocumentSharing();
-  
-  // Real-time data updates
-  initRealTimeUpdates();
+  // Initialize core functions
+  initializeApp();
+  setupNavigation();
+  setupModals();
+  setupSearchFunctionality();
+  setupGlobalEventListeners();
 });
 
 /**
- * Initialize tab navigation
+ * Initialize the application
  */
-function initTabNavigation() {
-  const menuItems = document.querySelectorAll('.menu-item[data-tab]');
+function initializeApp() {
+  console.log('Initializing InfoHub 360...');
+  
+  // Hide preloader after initialization
+  setTimeout(() => {
+    const preloader = document.getElementById('app-preloader');
+    if (preloader) {
+      preloader.style.display = 'none';
+    }
+    isAppReady = true;
+    console.log('InfoHub 360 ready!');
+  }, 1000);
+  
+  // Set current page active in navigation
+  setActiveNavigation();
+  
+  // Setup keyboard shortcuts
+  setupKeyboardShortcuts();
+}
+
+/**
+ * Setup navigation functionality
+ */
+function setupNavigation() {
+  // Handle sidebar menu clicks
+  const menuItems = document.querySelectorAll('.sidebar .menu-item');
+  
+  menuItems.forEach(menuItem => {
+    menuItem.addEventListener('click', function(e) {
+      const href = this.getAttribute('href');
+      
+      // Don't prevent default for logout link (let auth-guard handle it)
+      if (!this.classList.contains('logout-link')) {
+        e.preventDefault();
+        
+        if (href && href !== '#') {
+          // Add loading state
+          showNavigationLoading();
+          
+          // Navigate after short delay for UX
+          setTimeout(() => {
+            window.location.href = href;
+          }, 200);
+        }
+      }
+    });
+  });
+  
+  // Handle logo click
+  const logo = document.querySelector('.logo a');
+  if (logo) {
+    logo.addEventListener('click', function(e) {
+      e.preventDefault();
+      showNavigationLoading();
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 200);
+    });
+  }
+}
+
+/**
+ * Set active navigation based on current page
+ */
+function setActiveNavigation() {
+  const currentPath = window.location.pathname;
+  const menuItems = document.querySelectorAll('.sidebar .menu-item');
   
   menuItems.forEach(item => {
-    item.addEventListener('click', function(e) {
-      e.preventDefault();
-      
-      // Get the tab to display
-      const tabName = this.getAttribute('data-tab');
-      
-      // Remove active class from all menu items
-      menuItems.forEach(menuItem => {
-        menuItem.classList.remove('active');
-      });
-      
-      // Add active class to clicked menu item
-      this.classList.add('active');
-      
-      // Hide all tab contents
-      const tabContents = document.querySelectorAll('.tab-content');
-      tabContents.forEach(content => {
-        content.classList.remove('active');
-      });
-      
-      // Show the selected tab content
-      document.getElementById(tabName + '-tab').classList.add('active');
-    });
+    item.classList.remove('active');
+    
+    const href = item.getAttribute('href');
+    if (href && (currentPath.includes(href) || (currentPath === '/' && href === 'index.html'))) {
+      item.classList.add('active');
+    }
   });
 }
 
 /**
- * Initialize modal functionality
+ * Show navigation loading state
  */
-function initModals() {
-  // Share with customer modal
-  const shareButtons = document.querySelectorAll('.btn-outline');
-  
-  shareButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      openShareModal(this.closest('.product-card'));
-    });
-  });
-  
-  // Global event delegation for modal close buttons
+function showNavigationLoading() {
+  const preloader = document.getElementById('app-preloader');
+  if (preloader) {
+    preloader.style.display = 'flex';
+  }
+}
+
+/**
+ * Setup modal functionality
+ */
+function setupModals() {
+  // Global modal event delegation
   document.addEventListener('click', function(e) {
+    // Handle modal close buttons
     if (e.target.matches('.modal-close') || e.target.closest('.modal-close')) {
-      closeModal();
+      closeModal(e.target.closest('.modal-backdrop'));
     }
     
+    // Handle backdrop clicks
     if (e.target.matches('.modal-backdrop')) {
-      closeModal();
+      closeModal(e.target);
+    }
+  });
+  
+  // Handle ESC key to close modals
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      const activeModal = document.querySelector('.modal-backdrop');
+      if (activeModal) {
+        closeModal(activeModal);
+      }
     }
   });
 }
 
 /**
- * Opens the share with customer modal
- * @param {HTMLElement} productCard - The product card element
+ * Close modal with animation
+ * @param {HTMLElement} modal - Modal element to close
  */
-function openShareModal(productCard) {
-  // Get product details
-  const productName = productCard.querySelector('h3').textContent;
-  const productCode = productCard.querySelector('.product-code').textContent;
-  const productPrice = productCard.querySelector('.price').textContent;
-  const productImage = productCard.querySelector('img').src;
+function closeModal(modal) {
+  if (!modal) return;
   
-  // Create modal backdrop
-  const backdrop = document.createElement('div');
-  backdrop.className = 'modal-backdrop';
-  
-  // Create modal content
-  const modalContent = `
-    <div class="modal">
-      <div class="modal-header">
-        <h2>ส่งข้อมูลให้ลูกค้า</h2>
-        <button class="modal-close"><i class="fas fa-times"></i></button>
-      </div>
-      
-      <!-- Product Info -->
-      <div class="modal-body">
-        <div class="document-preview">
-          <div class="preview-header">
-            <img src="${productImage}" alt="${productName}" class="preview-thumbnail">
-            <div>
-              <h3>${productName}</h3>
-              <p class="product-code">${productCode}</p>
-              <p class="price">${productPrice}</p>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Sharing Options -->
-        <div class="form-group">
-          <h3 class="form-label">เลือกข้อมูลที่ต้องการส่ง</h3>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-            <!-- Document Selection -->
-            <div>
-              <p class="form-label">เอกสาร</p>
-              <div>
-                <div class="checkbox-group">
-                  <input type="checkbox" id="spec" class="checkbox-input" checked>
-                  <label for="spec">สเปคสินค้า</label>
-                </div>
-                <div class="checkbox-group">
-                  <input type="checkbox" id="manual" class="checkbox-input">
-                  <label for="manual">คู่มือการใช้งาน</label>
-                </div>
-                <div class="checkbox-group">
-                  <input type="checkbox" id="compare" class="checkbox-input" checked>
-                  <label for="compare">เปรียบเทียบรุ่น</label>
-                </div>
-                <div class="checkbox-group">
-                  <input type="checkbox" id="promo" class="checkbox-input">
-                  <label for="promo">โปรโมชันประจำเดือน</label>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Price and Availability -->
-            <div>
-              <p class="form-label">ข้อมูลราคาและสต๊อก</p>
-              <div>
-                <div class="checkbox-group">
-                  <input type="checkbox" id="price" class="checkbox-input" checked>
-                  <label for="price">ราคา</label>
-                </div>
-                <div class="checkbox-group">
-                  <input type="checkbox" id="stock" class="checkbox-input" checked>
-                  <label for="stock">สถานะสต๊อกสินค้า</label>
-                </div>
-                <div class="checkbox-group">
-                  <input type="checkbox" id="delivery" class="checkbox-input">
-                  <label for="delivery">ข้อมูลการจัดส่ง</label>
-                </div>
-                <div class="checkbox-group">
-                  <input type="checkbox" id="warranty" class="checkbox-input">
-                  <label for="warranty">รายละเอียดการรับประกัน</label>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Custom Message -->
-        <div class="form-group" style="margin-top: 1rem;">
-          <p class="form-label">ข้อความเพิ่มเติม</p>
-          <textarea placeholder="เพิ่มข้อความส่วนตัวถึงลูกค้า..." style="height: 80px;"></textarea>
-        </div>
-        
-        <!-- Send To -->
-        <div class="form-group" style="margin-top: 1rem;">
-          <p class="form-label">ส่งถึงลูกค้า</p>
-          
-          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-            <div style="flex: 1;">
-              <select style="width: 100%;">
-                <option value="">-- เลือกลูกค้า --</option>
-                <option value="1">คุณนภา วงศ์ประดิษฐ์ (089-123-4567)</option>
-                <option value="2">คุณสมศักดิ์ ใจดี (062-987-6543)</option>
-                <option value="3">คุณประภา เจริญพร (091-234-5678)</option>
-              </select>
-            </div>
-            <div style="color: #6b7280;">หรือ</div>
-            <div style="flex: 1;">
-              <input type="text" placeholder="กรอกอีเมลหรือเบอร์โทรศัพท์" style="width: 100%;">
-            </div>
-          </div>
-        </div>
-        
-        <!-- Send Methods -->
-        <div class="form-group" style="margin-top: 1rem;">
-          <p class="form-label">ช่องทางการส่ง</p>
-          
-          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-            <button class="share-method share-line">
-              <i class="fab fa-line"></i> LINE
-            </button>
-            <button class="share-method share-email">
-              <i class="fas fa-envelope"></i> อีเมล
-            </button>
-            <button class="share-method share-sms">
-              <i class="fas fa-comment-alt"></i> SMS
-            </button>
-            <button class="share-method share-qr">
-              <i class="fas fa-qrcode"></i> สร้าง QR Code
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Footer -->
-      <div class="modal-footer">
-        <button class="btn btn-outline modal-close">
-          ยกเลิก
-        </button>
-        <button class="btn btn-primary" id="sendDocuments">
-          ส่งข้อมูล
-        </button>
-      </div>
-    </div>
-  `;
-  
-  // Add modal to page
-  backdrop.innerHTML = modalContent;
-  document.body.appendChild(backdrop);
-  
-  // Add event listener to send button
-  const sendButton = document.getElementById('sendDocuments');
-  if (sendButton) {
-    sendButton.addEventListener('click', function() {
-      sendDocumentsToCustomer();
-    });
-  }
-}
-
-/**
- * Closes the currently open modal
- */
-function closeModal() {
-  const backdrop = document.querySelector('.modal-backdrop');
-  if (backdrop) {
-    // Add fade out animation
-    backdrop.style.opacity = '0';
-    setTimeout(() => {
-      backdrop.remove();
-    }, 300);
-  }
-}
-
-/**
- * Send documents to customer (simulation)
- */
-function sendDocumentsToCustomer() {
-  // Get selected documents and options
-  const selectedDocs = [];
-  if (document.getElementById('spec').checked) selectedDocs.push('สเปคสินค้า');
-  if (document.getElementById('manual').checked) selectedDocs.push('คู่มือการใช้งาน');
-  if (document.getElementById('compare').checked) selectedDocs.push('เปรียบเทียบรุ่น');
-  if (document.getElementById('promo').checked) selectedDocs.push('โปรโมชันประจำเดือน');
-  
-  // Show success message
-  const modalBody = document.querySelector('.modal-body');
-  const originalContent = modalBody.innerHTML;
-  
-  modalBody.innerHTML = `
-    <div style="text-align: center; padding: 2rem;">
-      <div style="color: #059669; font-size: 3rem; margin-bottom: 1rem;">
-        <i class="fas fa-check-circle"></i>
-      </div>
-      <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem;">ส่งข้อมูลเรียบร้อย</h3>
-      <p style="color: #6b7280;">เอกสารที่เลือก (${selectedDocs.length}) ถูกส่งไปยังลูกค้าเรียบร้อยแล้ว</p>
-    </div>
-  `;
-  
-  // Close modal after 2 seconds
+  modal.style.opacity = '0';
   setTimeout(() => {
-    closeModal();
-  }, 2000);
+    if (modal.parentNode) {
+      modal.parentNode.removeChild(modal);
+    }
+  }, 300);
 }
 
 /**
- * Initialize search functionality
+ * Setup search functionality (basic form handling)
  */
-function initSearch() {
-  const searchInputs = document.querySelectorAll('.search-input input');
+function setupSearchFunctionality() {
+  const searchInput = document.getElementById('search-keyword');
+  const searchButton = document.getElementById('search-button');
+  const clearButton = document.getElementById('clear-search');
+  const categoryFilter = document.getElementById('category-filter');
   
-  searchInputs.forEach(input => {
-    input.addEventListener('keyup', function(e) {
-      // If Enter key is pressed
+  // Handle Enter key in search input
+  if (searchInput) {
+    searchInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
-        const searchTerm = this.value.trim().toLowerCase();
-        if (searchTerm) {
-          simulateSearch(searchTerm, this.closest('.tab-content').id);
-        }
+        e.preventDefault();
+        triggerSearch();
       }
     });
-  });
-  
-  // Search buttons
-  const searchButtons = document.querySelectorAll('.search-form .btn-primary');
-  searchButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      const input = this.closest('.search-form').querySelector('input');
-      const searchTerm = input.value.trim().toLowerCase();
-      if (searchTerm) {
-        simulateSearch(searchTerm, this.closest('.tab-content').id);
-      }
-    });
-  });
-}
-
-/**
- * Simulate search functionality
- * @param {string} term - The search term
- * @param {string} tabId - The ID of the current tab
- */
-function simulateSearch(term, tabId) {
-  // Add loading indicator
-  const tabContent = document.getElementById(tabId);
-  const resultsContainer = tabContent.querySelector('.card');
-  
-  if (resultsContainer) {
-    resultsContainer.innerHTML = `
-      <div style="text-align: center; padding: 2rem;">
-        <div style="color: #2c67be; font-size: 2rem; margin-bottom: 1rem;">
-          <i class="fas fa-spinner fa-spin"></i>
-        </div>
-        <p>กำลังค้นหา "${term}"...</p>
-      </div>
-    `;
     
-    // Simulate API call delay
-    setTimeout(() => {
-      if (tabId === 'search-tab') {
-        // Refresh with original content
-        // In a real app, this would be populated with actual search results
-        resultsContainer.innerHTML = document.getElementById('search-results-template').innerHTML;
-        initModals(); // Reinitialize modal triggers
-      } else if (tabId === 'customers-tab') {
-        resultsContainer.innerHTML = document.getElementById('customers-template').innerHTML;
-      } else if (tabId === 'documents-tab') {
-        resultsContainer.innerHTML = document.getElementById('documents-template').innerHTML;
+    // Handle input changes for real-time feedback
+    searchInput.addEventListener('input', function() {
+      const value = this.value.trim();
+      if (searchButton) {
+        searchButton.disabled = false;
       }
-    }, 1000);
+    });
+  }
+  
+  // Handle search button click
+  if (searchButton) {
+    searchButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      triggerSearch();
+    });
+  }
+  
+  // Handle clear button
+  if (clearButton) {
+    clearButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      clearSearch();
+    });
+  }
+  
+  // Handle category filter change
+  if (categoryFilter) {
+    categoryFilter.addEventListener('change', function() {
+      // Auto-trigger search when category changes
+      setTimeout(triggerSearch, 100);
+    });
   }
 }
 
 /**
- * Initialize pipeline interactions
+ * Trigger search functionality
+ * This function will be called by product controller
  */
-function initPipeline() {
-  // Show more buttons
-  const showMoreButtons = document.querySelectorAll('.show-more');
+function triggerSearch() {
+  console.log('Search triggered');
   
-  showMoreButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      // In a real app, this would show more items in that pipeline stage
-      alert('In a real app, this would show all items in this pipeline stage.');
-    });
+  const searchInput = document.getElementById('search-keyword');
+  const categoryFilter = document.getElementById('category-filter');
+  
+  const searchData = {
+    keyword: searchInput ? searchInput.value.trim() : '',
+    category: categoryFilter ? categoryFilter.value : ''
+  };
+  
+  // Dispatch custom event for product controller to handle
+  const searchEvent = new CustomEvent('search-triggered', {
+    detail: searchData
+  });
+  document.dispatchEvent(searchEvent);
+}
+
+/**
+ * Clear search form
+ */
+function clearSearch() {
+  const searchInput = document.getElementById('search-keyword');
+  const categoryFilter = document.getElementById('category-filter');
+  
+  if (searchInput) searchInput.value = '';
+  if (categoryFilter) categoryFilter.value = '';
+  
+  // Trigger search to show all products
+  setTimeout(triggerSearch, 100);
+}
+
+/**
+ * Setup global event listeners
+ */
+function setupGlobalEventListeners() {
+  // Handle retry button clicks
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('retry-btn')) {
+      const retryEvent = new CustomEvent('retry-requested');
+      document.dispatchEvent(retryEvent);
+    }
   });
   
-  // Make pipeline items draggable
-  const pipelineItems = document.querySelectorAll('.stage-item');
-  
-  pipelineItems.forEach(item => {
-    item.setAttribute('draggable', 'true');
-    
-    item.addEventListener('dragstart', function(e) {
-      e.dataTransfer.setData('text/plain', this.innerHTML);
-      this.classList.add('dragging');
-    });
-    
-    item.addEventListener('dragend', function() {
-      this.classList.remove('dragging');
-    });
-  });
-  
-  // Make pipeline stages droppable
-  const pipelineStages = document.querySelectorAll('.pipeline-stage');
-  
-  pipelineStages.forEach(stage => {
-    stage.addEventListener('dragover', function(e) {
-      e.preventDefault();
-      this.classList.add('dragover');
-    });
-    
-    stage.addEventListener('dragleave', function() {
-      this.classList.remove('dragover');
-    });
-    
-    stage.addEventListener('drop', function(e) {
-      e.preventDefault();
-      this.classList.remove('dragover');
-      
-      const itemData = e.dataTransfer.getData('text/plain');
-      const draggedItem = document.querySelector('.dragging');
-      
-      if (draggedItem) {
-        draggedItem.remove();
-      }
-      
-      // Create new item in the target stage
-      const newItem = document.createElement('div');
-      newItem.className = 'stage-item';
-      newItem.innerHTML = itemData;
-      newItem.setAttribute('draggable', 'true');
-      
-      // Add before "show more" link
-      const showMore = this.querySelector('.show-more');
-      if (showMore) {
-        this.insertBefore(newItem, showMore);
-      } else {
-        this.appendChild(newItem);
-      }
-      
-      // Update item count
-      const countElement = this.querySelector('.stage-count span');
-      if (countElement) {
-        const newCount = parseInt(countElement.textContent) + 1;
-        countElement.textContent = newCount;
-      }
-      
-      // Reinitialize drag events for the new item
-      newItem.addEventListener('dragstart', function(e) {
-        e.dataTransfer.setData('text/plain', this.innerHTML);
-        this.classList.add('dragging');
-      });
-      
-      newItem.addEventListener('dragend', function() {
-        this.classList.remove('dragging');
-      });
-      
-      // Simulate API call to update status
-      simulateStatusUpdate('Pipeline item moved to new stage');
-    });
+  // Handle load more button clicks
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('load-more-btn') || e.target.closest('.load-more-btn')) {
+      const loadMoreEvent = new CustomEvent('load-more-requested');
+      document.dispatchEvent(loadMoreEvent);
+    }
   });
 }
 
 /**
- * Initialize document sharing functionality
+ * Setup keyboard shortcuts
  */
-function initDocumentSharing() {
-  // Document card actions
-  const documentActions = document.querySelectorAll('.document-actions button');
-  
-  documentActions.forEach(button => {
-    button.addEventListener('click', function() {
-      const action = this.getAttribute('data-action');
-      const documentCard = this.closest('.document-card');
-      const documentTitle = documentCard.querySelector('h3').textContent;
-      
-      switch (action) {
-        case 'view':
-          alert(`Viewing document: ${documentTitle}`);
-          break;
-        case 'share':
-          alert(`Sharing document: ${documentTitle}`);
-          break;
-        case 'download':
-          alert(`Downloading document: ${documentTitle}`);
-          break;
-      }
-    });
-  });
-}
-
-/**
- * Initialize real-time data updates
- * This simulates updates from a backend service
- */
-function initRealTimeUpdates() {
-  // Simulate periodic stock updates
-  setInterval(() => {
-    // Randomly select a product to update
-    const products = document.querySelectorAll('.product-card');
-    if (products.length > 0) {
-      const randomIndex = Math.floor(Math.random() * products.length);
-      const product = products[randomIndex];
-      
-      // Update stock count
-      const stockCountElement = product.querySelector('.stock-count');
-      if (stockCountElement) {
-        const currentCount = parseInt(stockCountElement.textContent.replace(/[^0-9]/g, ''));
-        const newCount = Math.max(0, currentCount + (Math.random() > 0.7 ? -1 : 1));
-        stockCountElement.textContent = `(เหลือ ${newCount} เครื่อง)`;
-        
-        // Update stock status
-        const stockStatusElement = product.querySelector('.in-stock');
-        if (stockStatusElement) {
-          if (newCount === 0) {
-            stockStatusElement.textContent = 'สินค้าหมด';
-            stockStatusElement.style.color = '#ee4b2b';
-          } else if (newCount <= 3) {
-            stockStatusElement.textContent = 'ใกล้หมด';
-            stockStatusElement.style.color = '#f59e0b';
-          } else {
-            stockStatusElement.textContent = 'มีสินค้า';
-            stockStatusElement.style.color = '#059669';
-          }
-        }
+function setupKeyboardShortcuts() {
+  document.addEventListener('keydown', function(e) {
+    // Don't interfere with form inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    // Ctrl/Cmd + K = Focus search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      const searchInput = document.getElementById('search-keyword');
+      if (searchInput) {
+        searchInput.focus();
       }
     }
-  }, 30000); // Every 30 seconds
-  
-  // Simulate new notifications
-  setTimeout(() => {
-    // Add a new notification
-    const notificationCount = document.querySelector('.notification-count');
-    const notificationDropdown = document.querySelector('.notification-dropdown');
     
-    if (notificationCount && notificationDropdown) {
-      const currentCount = parseInt(notificationCount.textContent);
-      notificationCount.textContent = currentCount + 1;
-      
-      // Add new notification to dropdown
-      const newNotification = document.createElement('div');
-      newNotification.className = 'notification-item';
-      newNotification.innerHTML = `
-        <p class="notification-title">สินค้าใหม่เข้าสต๊อก: TV LG OLED</p>
-        <p class="notification-desc">เพิ่มเข้าระบบเมื่อ 1 นาทีที่แล้ว</p>
-      `;
-      
-      notificationDropdown.appendChild(newNotification);
-      
-      // Show notification alert
-      showNotificationAlert('สินค้าใหม่เข้าสต๊อก', 'TV LG OLED เพิ่มเข้าระบบเมื่อ 1 นาทีที่แล้ว');
+    // Ctrl/Cmd + Enter = Trigger search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      triggerSearch();
     }
-  }, 45000); // After 45 seconds
+    
+    // ESC = Clear search
+    if (e.key === 'Escape') {
+      const searchInput = document.getElementById('search-keyword');
+      if (searchInput && document.activeElement === searchInput) {
+        clearSearch();
+        searchInput.blur();
+      }
+    }
+  });
 }
 
 /**
- * Show notification alert
- * @param {string} title - The notification title
- * @param {string} message - The notification message
+ * Show notification message
+ * @param {string} message - Message to show
+ * @param {string} type - Type of notification (success, error, warning, info)
  */
-function showNotificationAlert(title, message) {
-  const alert = document.createElement('div');
-  alert.className = 'notification-alert';
-  alert.innerHTML = `
-    <div class="notification-alert-icon">
-      <i class="fas fa-bell"></i>
+function showNotification(message, type = 'info') {
+  // Remove existing notifications
+  const existingNotifications = document.querySelectorAll('.app-notification');
+  existingNotifications.forEach(notification => notification.remove());
+  
+  const notification = document.createElement('div');
+  notification.className = `app-notification notification-${type}`;
+  
+  const iconMap = {
+    success: 'fas fa-check-circle',
+    error: 'fas fa-exclamation-triangle',
+    warning: 'fas fa-exclamation-circle',
+    info: 'fas fa-info-circle'
+  };
+  
+  notification.innerHTML = `
+    <div class="notification-content">
+      <i class="${iconMap[type]}"></i>
+      <span>${escapeHtml(message)}</span>
+      <button class="notification-close">
+        <i class="fas fa-times"></i>
+      </button>
     </div>
-    <div class="notification-alert-content">
-      <h4>${title}</h4>
-      <p>${message}</p>
-    </div>
-    <button class="notification-alert-close">
-      <i class="fas fa-times"></i>
-    </button>
   `;
   
-  // Add to DOM
-  document.body.appendChild(alert);
+  // Add styles
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-left: 4px solid ${getNotificationColor(type)};
+    z-index: 1000;
+    max-width: 400px;
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.3s ease;
+  `;
   
-  // Add animation
+  document.body.appendChild(notification);
+  
+  // Animate in
   setTimeout(() => {
-    alert.classList.add('show');
+    notification.style.opacity = '1';
+    notification.style.transform = 'translateX(0)';
   }, 100);
   
-  // Auto close after 5 seconds
-  setTimeout(() => {
-    alert.classList.remove('show');
-    setTimeout(() => {
-      alert.remove();
-    }, 300);
-  }, 5000);
+  // Handle close button
+  const closeButton = notification.querySelector('.notification-close');
+  closeButton.addEventListener('click', () => {
+    notification.style.opacity = '0';
+    notification.style.transform = 'translateX(20px)';
+    setTimeout(() => notification.remove(), 300);
+  });
   
-  // Close button
-  const closeButton = alert.querySelector('.notification-alert-close');
-  closeButton.addEventListener('click', function() {
-    alert.classList.remove('show');
-    setTimeout(() => {
-      alert.remove();
-    }, 300);
+  // Auto remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.style.opacity = '0';
+      notification.style.transform = 'translateX(20px)';
+      setTimeout(() => notification.remove(), 300);
+    }
+  }, 5000);
+}
+
+/**
+ * Get notification color based on type
+ * @param {string} type - Notification type
+ * @returns {string} - Color code
+ */
+function getNotificationColor(type) {
+  const colors = {
+    success: '#22c55e',
+    error: '#ef4444',
+    warning: '#f59e0b',
+    info: '#3b82f6'
+  };
+  return colors[type] || colors.info;
+}
+
+/**
+ * Escape HTML to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} - Escaped HTML
+ */
+function escapeHtml(text) {
+  if (typeof text !== 'string') return String(text);
+  
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Format number with Thai locale
+ * @param {number} number - Number to format
+ * @returns {string} - Formatted number
+ */
+function formatNumber(number) {
+  if (typeof number !== 'number') return '0';
+  return number.toLocaleString('th-TH');
+}
+
+/**
+ * Format currency with Thai Baht
+ * @param {number} amount - Amount to format
+ * @returns {string} - Formatted currency
+ */
+function formatCurrency(amount) {
+  if (typeof amount !== 'number') return '฿0';
+  return `฿${amount.toLocaleString('th-TH')}`;
+}
+
+/**
+ * Show loading state for any element
+ * @param {HTMLElement} element - Element to show loading state
+ * @param {string} message - Loading message
+ */
+function showLoadingState(element, message = 'กำลังโหลด...') {
+  if (!element) return;
+  
+  const originalContent = element.innerHTML;
+  element.setAttribute('data-original-content', originalContent);
+  
+  element.innerHTML = `
+    <div class="loading-state">
+      <div class="loading-spinner">
+        <i class="fas fa-spinner fa-spin"></i>
+      </div>
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
+/**
+ * Hide loading state and restore original content
+ * @param {HTMLElement} element - Element to restore
+ */
+function hideLoadingState(element) {
+  if (!element) return;
+  
+  const originalContent = element.getAttribute('data-original-content');
+  if (originalContent) {
+    element.innerHTML = originalContent;
+    element.removeAttribute('data-original-content');
+  }
+}
+
+/**
+ * Check if element is in viewport
+ * @param {HTMLElement} element - Element to check
+ * @returns {boolean} - True if in viewport
+ */
+function isElementInViewport(element) {
+  if (!element) return false;
+  
+  const rect = element.getBoundingClientRect();
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  );
+}
+
+/**
+ * Smooth scroll to element
+ * @param {HTMLElement|string} target - Element or selector to scroll to
+ */
+function scrollToElement(target) {
+  const element = typeof target === 'string' ? document.querySelector(target) : target;
+  if (!element) return;
+  
+  element.scrollIntoView({
+    behavior: 'smooth',
+    block: 'start'
   });
 }
 
-/**
- * Simulate API status update
- * @param {string} message - The status message
- */
-function simulateStatusUpdate(message) {
-  console.log('API Update:', message);
-  // In a real app, this would make an API call to update the backend
-}
+// Export functions for use by other scripts
+window.InfoHubApp = {
+  showNotification,
+  closeModal,
+  triggerSearch,
+  clearSearch,
+  formatNumber,
+  formatCurrency,
+  showLoadingState,
+  hideLoadingState,
+  escapeHtml,
+  isElementInViewport,
+  scrollToElement,
+  isAppReady: () => isAppReady
+};
 
-/**
- * Templates for search results and other dynamic content
- * These would normally be loaded from an API or backend
- */
-const searchResultsTemplate = `
-  <h2>ผลการค้นหาล่าสุด</h2>
-  
-  <!-- Product Card 1 -->
-  <div class="product-card">
-    <div class="product-image">
-      <img src="/api/placeholder/200/150" alt="TV Samsung">
-    </div>
-    <div class="product-details">
-      <h3>Samsung QN90C 55" QLED 4K Smart TV</h3>
-      <p class="product-code">รหัสสินค้า: TV-SAM-QN90C-55</p>
-      <div class="stock-status">
-        <span class="in-stock">มีสินค้า</span>
-        <span class="stock-count">(เหลือ 2 เครื่อง)</span>
-      </div>
-      <p class="delivery-info"><span>จัดส่ง:</span> ภายใน 1-2 วัน</p>
-      <div class="document-links">
-        <a href="#" class="document-link">
-          <i class="fas fa-file-pdf"></i> สเปคสินค้า
-        </a>
-        <a href="#" class="document-link">
-          <i class="fas fa-file-pdf"></i> คู่มือการใช้งาน
-        </a>
-        <a href="#" class="document-link">
-          <i class="fas fa-file-pdf"></i> เปรียบเทียบรุ่น
-        </a>
-      </div>
-    </div>
-    <div class="product-action">
-      <div>
-        <p class="price">฿45,990</p>
-        <p class="original-price">฿49,990</p>
-        <p class="discount">ลด 8%</p>
-      </div>
-      <div class="action-buttons">
-        <button class="btn btn-primary">
-          <i class="fas fa-shopping-cart"></i> เพิ่มการขาย
-        </button>
-        <button class="btn btn-outline">
-          <i class="fas fa-share-alt"></i> ส่งให้ลูกค้า
-        </button>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Product Card 2 -->
-  <div class="product-card">
-    <div class="product-image">
-      <img src="/api/placeholder/200/150" alt="TV Samsung">
-    </div>
-    <div class="product-details">
-      <h3>Samsung BU8100 55" Crystal UHD 4K Smart TV</h3>
-      <p class="product-code">รหัสสินค้า: TV-SAM-BU8100-55</p>
-      <div class="stock-status">
-        <span class="in-stock">มีสินค้า</span>
-        <span class="stock-count">(เหลือ 12 เครื่อง)</span>
-      </div>
-      <p class="delivery-info"><span>จัดส่ง:</span> พร้อมส่งทันที</p>
-      <div class="document-links">
-        <a href="#" class="document-link">
-          <i class="fas fa-file-pdf"></i> สเปคสินค้า
-        </a>
-        <a href="#" class="document-link">
-          <i class="fas fa-file-pdf"></i> คู่มือการใช้งาน
-        </a>
-        <a href="#" class="document-link">
-          <i class="fas fa-file-pdf"></i> เปรียบเทียบรุ่น
-        </a>
-      </div>
-    </div>
-    <div class="product-action">
-      <div>
-        <p class="price">฿17,990</p>
-        <p class="original-price">฿20,990</p>
-        <p class="discount">ลด 14%</p>
-      </div>
-      <div class="action-buttons">
-        <button class="btn btn-primary">
-          <i class="fas fa-shopping-cart"></i> เพิ่มการขาย
-        </button>
-        <button class="btn btn-outline">
-          <i class="fas fa-share-alt"></i> ส่งให้ลูกค้า
-        </button>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Loading More -->
-  <div class="load-more">
-    <button class="btn-link">
-      แสดงเพิ่มเติม
-    </button>
-  </div>
-`;
-
-// Add templates to DOM for simulation purposes
-document.addEventListener('DOMContentLoaded', function() {
-  // Create hidden templates in the DOM
-  const templatesDiv = document.createElement('div');
-  templatesDiv.style.display = 'none';
-  
-  const searchTemplate = document.createElement('script');
-  searchTemplate.id = 'search-results-template';
-  searchTemplate.type = 'text/template';
-  searchTemplate.innerHTML = searchResultsTemplate;
-  
-  templatesDiv.appendChild(searchTemplate);
-  document.body.appendChild(templatesDiv);
+// Custom events for inter-script communication
+window.addEventListener('load', function() {
+  const appReadyEvent = new CustomEvent('app-ready');
+  document.dispatchEvent(appReadyEvent);
 });
 
-// CSS for notification alerts
-const notificationAlertStyles = `
-.notification-alert {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background-color: white;
-  border-radius: 0.375rem;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  max-width: 400px;
-  z-index: 100;
-  opacity: 0;
-  transform: translateX(20px);
-  transition: opacity 0.3s, transform 0.3s;
-}
-
-.notification-alert.show {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.notification-alert-icon {
-  background-color: #ebf5ff;
-  color: #2c67be;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-
-.notification-alert-content h4 {
-  font-weight: bold;
-  margin-bottom: 0.25rem;
-}
-
-.notification-alert-content p {
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.notification-alert-close {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  color: #6b7280;
-  padding: 0.25rem;
-  margin-left: auto;
-}
-`;
-
-// Add notification styles to DOM
-document.addEventListener('DOMContentLoaded', function() {
-  const style = document.createElement('style');
-  style.innerHTML = notificationAlertStyles;
-  document.head.appendChild(style);
+// Handle online/offline status
+window.addEventListener('online', function() {
+  showNotification('เชื่อมต่ออินเทอร์เน็ตแล้ว', 'success');
 });
+
+window.addEventListener('offline', function() {
+  showNotification('การเชื่อมต่ออินเทอร์เน็ตหลุด กรุณาตรวจสอบการเชื่อมต่อ', 'warning');
+});
+
+console.log('InfoHub 360 Scripts loaded successfully');
