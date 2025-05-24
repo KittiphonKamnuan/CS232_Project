@@ -11,8 +11,10 @@ const API_ENDPOINTS = {
   PRODUCTS: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetAllProducts',
   CUSTOMERS: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetAllCustomers',
   CREATE_CUSTOMER: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/CreateCustomer',
-  SALES: 'https://api.infohub360.com/sales', // จะต้องเพิ่ม endpoint จริงในอนาคต
-  DOCUMENTS: 'https://api.infohub360.com/documents' // จะต้องเพิ่ม endpoint จริงในอนาคต
+  UPDATE_CUSTOMER: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/UpdateCustomer',
+  DELETE_CUSTOMER: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/DeleteCustomer', // เพิ่ม endpoint ใหม่
+  SALES: 'https://api.infohub360.com/sales',
+  DOCUMENTS: 'https://api.infohub360.com/documents'
 };
 
 class DataService {
@@ -166,7 +168,7 @@ class DataService {
     }
   }
   
-  /**
+   /**
    * ===================================
    * CUSTOMERS API
    * ===================================
@@ -203,7 +205,7 @@ class DataService {
       throw new Error('ไม่สามารถโหลดข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
     }
   }
-  
+
   /**
    * ดึงข้อมูลลูกค้าตาม ID
    * @param {string} customerId - รหัสลูกค้า
@@ -213,7 +215,6 @@ class DataService {
     try {
       console.log('Getting customer by ID:', customerId);
       
-      // เรียก API เพื่อดึงข้อมูลลูกค้าตาม ID
       const url = `${API_ENDPOINTS.CUSTOMERS}?customer_id=${encodeURIComponent(customerId)}`;
       const response = await fetch(url);
       
@@ -224,29 +225,23 @@ class DataService {
       const data = await response.json();
       console.log('API Response for customer ID:', customerId, data);
       
-      // ถ้า API ส่งข้อมูลเป็น array ให้หาลูกค้าที่ตรงกับ ID
       if (Array.isArray(data)) {
         const customer = data.find(c => 
           (c.customer_id && c.customer_id === customerId) || 
           (c.id && c.id === customerId)
         );
         if (customer) {
-          console.log('Customer found in array:', customer);
           return this._formatCustomer(customer);
         } else {
-          // ถ้าไม่เจอใน array ให้หาจากลูกค้าทั้งหมด
           const allCustomers = await this.getCustomers();
           const foundCustomer = allCustomers.find(c => c.id === customerId);
           if (foundCustomer) {
-            console.log('Customer found in all customers:', foundCustomer);
             return foundCustomer;
           }
         }
       } else if (data && typeof data === 'object') {
-        // ถ้า API ส่งข้อมูลเป็น object เดียว
         const customerIdFromData = data.customer_id || data.id;
         if (customerIdFromData === customerId) {
-          console.log('Customer found as single object:', data);
           return this._formatCustomer(data);
         }
       }
@@ -254,13 +249,10 @@ class DataService {
       throw new Error('ไม่พบข้อมูลลูกค้า');
     } catch (err) {
       console.error('Error loading customer by ID:', err);
-      // ถ้าเกิดข้อผิดพลาด ลองหาจากลูกค้าทั้งหมด
       try {
-        console.log('Fallback: searching in all customers');
         const allCustomers = await this.getCustomers();
         const customer = allCustomers.find(c => c.id === customerId);
         if (customer) {
-          console.log('Customer found in fallback search:', customer);
           return customer;
         }
       } catch (fallbackError) {
@@ -270,7 +262,7 @@ class DataService {
       throw new Error('ไม่สามารถโหลดข้อมูลลูกค้าได้ กรุณาตรวจสอบรหัสลูกค้าและลองใหม่อีกครั้ง');
     }
   }
-  
+
   /**
    * สร้างลูกค้าใหม่
    * @param {Object} customerData - ข้อมูลลูกค้าใหม่
@@ -289,7 +281,7 @@ class DataService {
         throw new Error('กรุณากรอกเบอร์โทรศัพท์');
       }
       
-      // Prepare data for API - match the exact JSON format from the screenshot
+      // Prepare data for API
       const apiData = {
         "fname": customerData.fname || "",
         "lname": customerData.name || "", 
@@ -311,15 +303,102 @@ class DataService {
         body: JSON.stringify(apiData)
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      
-      // Get response text first to debug
       const responseText = await response.text();
       console.log('Response text:', responseText);
       
       if (!response.ok) {
         let errorMessage = `Failed to create customer: HTTP ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          errorMessage = `Server error: ${responseText}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Parse response
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        result = { message: responseText };
+      }
+      
+      console.log('Customer created successfully:', result);
+      
+      return this._formatCustomer({
+        ...apiData,
+        customer_id: result.customerId || result.customer_id || `CUST_${Date.now()}`,
+        created_at: new Date().toISOString(),
+        id: result.customerId || result.customer_id || `CUST_${Date.now()}`
+      });
+      
+    } catch (err) {
+      console.error('Error creating customer:', err);
+      
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+      }
+      
+      throw new Error(err.message || 'ไม่สามารถสร้างลูกค้าใหม่ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  }
+
+  /**
+   * อัปเดตข้อมูลลูกค้า
+   * @param {string} customerId - รหัสลูกค้า
+   * @param {Object} customerData - ข้อมูลลูกค้าที่ต้องการอัปเดต
+   * @returns {Promise<Object>} - ข้อมูลลูกค้าที่อัปเดตแล้ว
+   */
+  async updateCustomer(customerId, customerData) {
+    try {
+      console.log('Updating customer:', customerId, customerData);
+      
+      // Validate required fields
+      if (!customerData.fname || !customerData.name) {
+        throw new Error('กรุณากรอกชื่อลูกค้า');
+      }
+      
+      if (!customerData.tel) {
+        throw new Error('กรุณากรอกเบอร์โทรศัพท์');
+      }
+      
+      // Prepare data for API - ใช้รูปแบบเดียวกับ CreateCustomer
+      const apiData = {
+        "customer_id": customerId, // เพิ่ม customer_id สำหรับ update
+        "fname": customerData.fname || "",
+        "lname": customerData.name || customerData.lname || "", 
+        "tel": customerData.tel || "",
+        "email": customerData.email || "",
+        "address": customerData.address || "",
+        "status": customerData.status || "interested",
+        "note": customerData.note || ""
+      };
+      
+      console.log('Update API Data to send:', JSON.stringify(apiData, null, 2));
+      
+      const response = await fetch(API_ENDPOINTS.UPDATE_CUSTOMER, {
+        method: 'PUT', // หรือ POST ขึ้นอยู่กับ API design
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(apiData)
+      });
+      
+      console.log('Update response status:', response.status);
+      
+      // Get response text first to debug
+      const responseText = await response.text();
+      console.log('Update response text:', responseText);
+      
+      if (!response.ok) {
+        let errorMessage = `Failed to update customer: HTTP ${response.status}`;
         try {
           const errorData = JSON.parse(responseText);
           if (errorData.message) {
@@ -343,28 +422,104 @@ class DataService {
         result = { message: responseText };
       }
       
-      console.log('Customer created successfully:', result);
+      console.log('Customer updated successfully:', result);
       
       // Return formatted customer data
       return this._formatCustomer({
         ...apiData,
-        customer_id: result.customerId || result.customer_id || `CUST_${Date.now()}`,
-        created_at: new Date().toISOString(),
-        id: result.customerId || result.customer_id || `CUST_${Date.now()}`
+        customer_id: customerId,
+        id: customerId,
+        updated_at: new Date().toISOString()
       });
       
     } catch (err) {
-      console.error('Error creating customer:', err);
+      console.error('Error updating customer:', err);
       
       // Provide more specific error messages
       if (err.name === 'TypeError' && err.message.includes('fetch')) {
         throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
       }
       
-      throw new Error(err.message || 'ไม่สามารถสร้างลูกค้าใหม่ได้ กรุณาลองใหม่อีกครั้ง');
+      throw new Error(err.message || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
     }
   }
-  
+
+  /**
+   * ลบข้อมูลลูกค้า
+   * @param {string} customerId - รหัสลูกค้า
+   * @returns {Promise<boolean>} - สถานะการลบ
+   */
+  async deleteCustomer(customerId) {
+    try {
+      console.log('Deleting customer:', customerId);
+      
+      // Validate customer ID
+      if (!customerId) {
+        throw new Error('กรุณาระบุรหัสลูกค้า');
+      }
+      
+      // Prepare data for API - ใช้รูปแบบเดียวกับที่เห็นในรูป
+      const apiData = {
+        "customer_id": customerId
+      };
+      
+      console.log('Delete API Data to send:', JSON.stringify(apiData, null, 2));
+      
+      const response = await fetch(API_ENDPOINTS.DELETE_CUSTOMER, {
+        method: 'DELETE', // หรือ POST ขึ้นอยู่กับ API design
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(apiData)
+      });
+      
+      console.log('Delete response status:', response.status);
+      
+      // Get response text first to debug
+      const responseText = await response.text();
+      console.log('Delete response text:', responseText);
+      
+      if (!response.ok) {
+        let errorMessage = `Failed to delete customer: HTTP ${response.status}`;
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.warn('Could not parse error response:', parseError);
+          errorMessage = `Server error: ${responseText}`;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      // Parse response
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.warn('Could not parse success response:', parseError);
+        result = { message: responseText };
+      }
+      
+      console.log('Customer deleted successfully:', result);
+      return true;
+      
+    } catch (err) {
+      console.error('Error deleting customer:', err);
+      
+      // Provide more specific error messages
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+      }
+      
+      throw new Error(err.message || 'ไม่สามารถลบข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  }
+
   /**
    * ค้นหาลูกค้าด้วย parameters ต่างๆ
    * @param {Object} searchParams - พารามิเตอร์ในการค้นหา
@@ -593,7 +748,7 @@ class DataService {
     // จัดการกับข้อมูลที่อาจจะมีชื่อฟิลด์ต่างกัน
     const customerId = apiCustomer.customer_id || apiCustomer.id;
     const firstName = apiCustomer.customer_fname || apiCustomer.fname || apiCustomer.first_name || '';
-    const lastName = apiCustomer.customer_lname || apiCustomer.name || apiCustomer.last_name || '';
+    const lastName = apiCustomer.customer_lname || apiCustomer.name || apiCustomer.lname || apiCustomer.last_name || '';
     const fullName = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || 'ไม่ระบุชื่อ');
     
     return {
