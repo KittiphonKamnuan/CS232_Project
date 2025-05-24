@@ -1,7 +1,7 @@
 /**
  * profile-controller.js
  * Controller สำหรับจัดการข้อมูลโปรไฟล์ผู้ใช้
- * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
+ * ปรับปรุงให้ใช้ dataService แทนการเรียก API จริง
  */
 
 import dataService from '../services/data-service.js';
@@ -105,13 +105,13 @@ class ProfileController {
       this.hideError();
       
       // ดึงข้อมูลผู้ใช้ปัจจุบันจาก Mockup Service
-      this.currentUser = await mockupService.getCurrentUser();
+      this.currentUser = await dataService.getCurrentUser();
       
       // ดึงข้อมูลสถิติจาก Mockup Service
-      this.statistics = await mockupService.getStatistics();
+      this.statistics = await dataService.getStatistics();
       
       // ดึงรายการขายล่าสุดของผู้ใช้
-      const sales = await mockupService.getSales();
+      const sales = await dataService.getSales();
       
       // แสดงข้อมูลโปรไฟล์
       this.renderUserProfile();

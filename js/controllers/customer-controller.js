@@ -1,7 +1,7 @@
 /**
  * customer-controller.js
  * Controller สำหรับจัดการข้อมูลลูกค้า
- * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
+ * ปรับปรุงให้ใช้ dataService แทนการเรียก API จริง
  */
 
 import dataService from '../services/data-service.js';
@@ -198,13 +198,13 @@ class CustomerController {
       }
       
       // ดึงข้อมูลลูกค้าจาก Mockup Service
-      const customer = await mockupService.getCustomerById(customerId);
+      const customer = await dataService.getCustomerById(customerId);
       
       // ดึงข้อมูลการขายของลูกค้า
-      const customerSales = await mockupService.getSales({ customerId });
+      const customerSales = await dataService.getSales({ customerId });
       
       // ดึงข้อมูลเอกสารของลูกค้า
-      const customerDocuments = await mockupService.getDocuments({ customerId });
+      const customerDocuments = await dataService.getDocuments({ customerId });
       
       // แสดงข้อมูลลูกค้า
       this.renderCustomerDetails(customer, customerSales, customerDocuments);
@@ -599,7 +599,7 @@ class CustomerController {
       for (const productId of productIds) {
         try {
           // ดึงข้อมูลสินค้าจาก Mockup Service
-          const product = await mockupService.getProductById(productId);
+          const product = await dataService.getProductById(productId);
           
           html += `
             <div class="interested-product">

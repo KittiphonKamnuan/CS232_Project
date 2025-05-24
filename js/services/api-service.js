@@ -11,7 +11,7 @@ class ShareModal {
     this.modalElement = null;
     this.productData = null;
     this.selectedMethod = null;
-    this.API_ENDPOINT = 'https://s9ohxtt51a.execute-api.us-east-1.amazonaws.com/GetProducts';
+    this.API_ENDPOINT = 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetAllProducts';
     
     // binding methods
     this.open = this.open.bind(this);

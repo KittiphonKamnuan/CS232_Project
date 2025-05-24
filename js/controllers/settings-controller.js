@@ -1,7 +1,7 @@
 /**
  * settings-controller.js
  * Controller สำหรับจัดการการตั้งค่าระบบ
- * ปรับปรุงให้ใช้ MockupService แทนการเรียก API จริง
+ * ปรับปรุงให้ใช้ dataService แทนการเรียก API จริง
  */
 
 import dataService from '../services/data-service.js';
@@ -263,7 +263,7 @@ class SettingsController {
       this.hideError();
       
       // ดึงข้อมูลผู้ใช้ปัจจุบันจาก Mockup Service
-      this.currentUser = await mockupService.getCurrentUser();
+      this.currentUser = await dataService.getCurrentUser();
       
       // จำลองข้อมูลการตั้งค่าของผู้ใช้
       this.userSettings = {
