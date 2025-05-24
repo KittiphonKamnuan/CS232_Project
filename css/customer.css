@@ -1117,3 +1117,118 @@
   border-radius: 0;
   border-right-width: 0;
 }
+
+/* Date Range Filter Styles */
+.date-range-filter {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-input-group label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.date-input-group input[type="date"] {
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  background: white;
+  min-width: 150px;
+}
+
+.date-input-group input[type="date"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Updated search form to accommodate date filters */
+.search-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.filter-select {
+  min-width: 200px;
+}
+
+.filter-select select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  background: white;
+}
+
+.filter-select select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .search-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .date-range-filter {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .date-input-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .date-input-group label {
+    min-width: 40px;
+  }
+  
+  .date-input-group input[type="date"] {
+    flex: 1;
+    min-width: auto;
+  }
+  
+  .filter-select {
+    min-width: auto;
+  }
+}
+
+/* Animation for custom date range */
+.date-range-filter {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.date-range-filter[style*="display: none"] {
+  max-height: 0;
+  opacity: 0;
+}
+
+.date-range-filter:not([style*="display: none"]) {
+  max-height: 200px;
+  opacity: 1;
+}

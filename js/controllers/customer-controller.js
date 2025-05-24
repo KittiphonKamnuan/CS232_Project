@@ -14,6 +14,8 @@ class CustomerController {
     this.currentSearchParams = {};
     this.isLoading = false;
     this.currentCustomer = null; // สำหรับหน้า customer details
+
+    this.dateFilterSelect = document.getElementById('date-filter-select');
     
     // Pagination
     this.currentPage = 1;
@@ -23,7 +25,7 @@ class CustomerController {
     // Filters
     this.filters = {
       search: '',
-      status: ''
+      dateFilter: ''
     };
     
     // DOM Elements
@@ -192,14 +194,14 @@ class CustomerController {
    */
   async handleSearch() {
     try {
-      // Get search values
+      // Get search values - แก้ไขตรงนี้
       const keyword = this.keywordInput?.value || '';
-      const status = this.statusSelect?.value || '';
+      const dateFilter = this.dateFilterSelect?.value || ''; // เปลี่ยนจาก status
       
-      // Set filters
+      // Set filters - แก้ไขตรงนี้
       this.filters = {
         search: keyword,
-        status: status
+        dateFilter: dateFilter // เปลี่ยนจาก status: status
       };
       
       // Reset to first page
@@ -220,11 +222,11 @@ class CustomerController {
       
       this.displayCustomers(paginatedCustomers);
       
-      // Update title based on search
+      // Update title based on search - แก้ไขตรงนี้
       let title = 'ผลการค้นหา';
       if (keyword) title += ` "${keyword}"`;
-      if (status) title += ` สถานะ "${status}"`;
-      if (!keyword && !status) title = 'รายการลูกค้าทั้งหมด';
+      if (dateFilter) title += ` ${this.getDateFilterText(dateFilter)}`; // เปลี่ยนจาก status
+      if (!keyword && !dateFilter) title = 'รายการลูกค้าทั้งหมด'; // แก้เงื่อนไข
       
       this.updateResultsInfo(customers.length, title);
       this.renderPagination();
@@ -247,14 +249,14 @@ class CustomerController {
    * Handle clear search
    */
   handleClearSearch() {
-    // Reset form values
+    // Reset form values - แก้ไขตรงนี้
     if (this.keywordInput) this.keywordInput.value = '';
-    if (this.statusSelect) this.statusSelect.value = '';
+    if (this.dateFilterSelect) this.dateFilterSelect.value = ''; // เปลี่ยนจาก statusSelect
     
-    // Reset filters
+    // Reset filters - แก้ไขตรงนี้
     this.filters = {
       search: '',
-      status: ''
+      dateFilter: '' // เปลี่ยนจาก status: ''
     };
     
     // Reset to first page
@@ -263,6 +265,109 @@ class CustomerController {
     // Reload customers
     this.loadInitialCustomers();
   }
+  
+  // 5. เพิ่มฟังก์ชันใหม่สำหรับแปลงข้อความ date filter
+  getDateFilterText(dateFilter) {
+    const filterMap = {
+      'today': 'วันนี้',
+      'yesterday': 'เมื่อวาน',
+      'this_week': 'สัปดาห์นี้',
+      'last_week': 'สัปดาห์ที่แล้ว',
+      'this_month': 'เดือนนี้',
+      'last_month': 'เดือนที่แล้ว',
+      'last_3_months': '3 เดือนที่แล้ว',
+      'last_6_months': '6 เดือนที่แล้ว',
+      'this_year': 'ปีนี้',
+      'last_year': 'ปีที่แล้ว'
+    };
+    return filterMap[dateFilter] || dateFilter;
+  }
+
+  getDateRange(dateFilter) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (dateFilter) {
+      case 'today':
+        return {
+          from: today,
+          to: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+      
+      case 'yesterday':
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+        return {
+          from: yesterday,
+          to: new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1)
+        };
+      
+      case 'this_week':
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        return {
+          from: startOfWeek,
+          to: now
+        };
+      
+      case 'last_week':
+        const lastWeekStart = new Date(today);
+        lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
+        const lastWeekEnd = new Date(lastWeekStart);
+        lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+        return {
+          from: lastWeekStart,
+          to: lastWeekEnd
+        };
+      
+      case 'this_month':
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        return {
+          from: startOfMonth,
+          to: now
+        };
+      
+      case 'last_month':
+        const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          from: lastMonthStart,
+          to: lastMonthEnd
+        };
+      
+      case 'last_3_months':
+        const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+        return {
+          from: threeMonthsAgo,
+          to: now
+        };
+      
+      case 'last_6_months':
+        const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
+        return {
+          from: sixMonthsAgo,
+          to: now
+        };
+      
+      case 'this_year':
+        const startOfYear = new Date(today.getFullYear(), 0, 1);
+        return {
+          from: startOfYear,
+          to: now
+        };
+      
+      case 'last_year':
+        const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
+        const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31);
+        return {
+          from: lastYearStart,
+          to: lastYearEnd
+        };
+      
+      default:
+        return null;
+    }
+  }
+  
   
   /**
    * Display customers in the UI
@@ -284,7 +389,6 @@ class CustomerController {
             <th>ชื่อลูกค้า</th>
             <th>เบอร์โทรศัพท์</th>
             <th>อีเมล</th>
-            <th>สถานะ</th>
             <th>วันที่สร้าง</th>
             <th>การดำเนินการ</th>
           </tr>
@@ -305,7 +409,6 @@ class CustomerController {
    * Create customer row HTML
    */
   createCustomerRow(customer) {
-    const statusClass = this.getStatusClass(customer.status);
     const createdDate = new Date(customer.created_at).toLocaleDateString('th-TH');
     
     return `
@@ -320,9 +423,6 @@ class CustomerController {
         </td>
         <td>
           ${customer.email ? `<a href="mailto:${this.escapeHtml(customer.email)}">${this.escapeHtml(customer.email)}</a>` : 'ไม่ระบุ'}
-        </td>
-        <td>
-          <span class="status ${statusClass}">${this.getStatusText(customer.status)}</span>
         </td>
         <td>${createdDate}</td>
         <td>
@@ -445,15 +545,7 @@ class CustomerController {
             <textarea id="new-address" class="form-input" rows="3" placeholder="กรอกที่อยู่"></textarea>
           </div>
           
-          <div class="form-group">
-            <label for="new-status" class="form-label">สถานะ</label>
-            <select id="new-status" class="form-input">
-              <option value="interested">สนใจ</option>
-              <option value="contacted">ติดต่อแล้ว</option>
-              <option value="negotiating">กำลังเจรจา</option>
-              <option value="confirmed">ยืนยันแล้ว</option>
-            </select>
-          </div>
+          <!-- ลบส่วน status select ออก -->
           
           <div class="form-group">
             <label for="new-note" class="form-label">หมายเหตุ</label>
@@ -525,7 +617,8 @@ class CustomerController {
       const tel = modalElement.querySelector('#new-tel').value.trim();
       const email = modalElement.querySelector('#new-email').value.trim();
       const address = modalElement.querySelector('#new-address').value.trim();
-      const status = modalElement.querySelector('#new-status').value;
+      // ลบ const statusSelect = modalElement.querySelector('#new-status');
+      // ลบ const status = statusSelect ? statusSelect.value : null;
       const note = modalElement.querySelector('#new-note').value.trim();
       
       // Validate required fields
@@ -540,14 +633,14 @@ class CustomerController {
       confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
       confirmButton.disabled = true;
       
-      // Create customer data
+      // Create customer data - ลบ status
       const customerData = {
         fname,
         name,
         tel,
         email,
         address,
-        status,
+        // ลบ status,
         note
       };
       
@@ -688,7 +781,6 @@ class CustomerController {
   displayCustomerDetails(customer) {
     if (!this.customerDetailsContainer) return;
     
-    const statusClass = this.getStatusClass(customer.status);
     const priorityClass = this.getPriorityClass(customer.priority);
     
     const html = `
@@ -698,7 +790,6 @@ class CustomerController {
           <h1 class="customer-title">${this.escapeHtml(customer.name)}</h1>
           <p class="customer-code">รหัสลูกค้า: <span class="code-value">${this.escapeHtml(customer.id)}</span></p>
           <div class="customer-status">
-            <span class="status-badge ${statusClass}">${this.getStatusText(customer.status)}</span>
             <span class="priority-badge ${priorityClass}">${this.getPriorityText(customer.priority)}</span>
           </div>
         </div>
@@ -954,16 +1045,6 @@ class CustomerController {
           </div>
           
           <div class="form-group">
-            <label for="edit-status" class="form-label">สถานะ</label>
-            <select id="edit-status" class="form-input">
-              <option value="interested" ${customer.status === 'interested' ? 'selected' : ''}>สนใจ</option>
-              <option value="contacted" ${customer.status === 'contacted' ? 'selected' : ''}>ติดต่อแล้ว</option>
-              <option value="negotiating" ${customer.status === 'negotiating' ? 'selected' : ''}>กำลังเจรจา</option>
-              <option value="confirmed" ${customer.status === 'confirmed' ? 'selected' : ''}>ยืนยันแล้ว</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
             <label for="edit-note" class="form-label">หมายเหตุ</label>
             <textarea id="edit-note" class="form-input" rows="3">${this.escapeHtml(customer.note || '')}</textarea>
           </div>
@@ -1015,7 +1096,6 @@ async handleUpdateCustomer(modalElement, customer) {
     const tel = modalElement.querySelector('#edit-tel').value.trim();
     const email = modalElement.querySelector('#edit-email').value.trim();
     const address = modalElement.querySelector('#edit-address').value.trim();
-    const status = modalElement.querySelector('#edit-status').value;
     const note = modalElement.querySelector('#edit-note').value.trim();
     
     // Validate required fields
@@ -1037,7 +1117,6 @@ async handleUpdateCustomer(modalElement, customer) {
       tel,
       email,
       address,
-      status,
       note
     };
     
@@ -1513,18 +1592,6 @@ showEditCustomerModal(customer) {
         </div>
         
         <div class="form-group">
-          <label for="edit-status" class="form-label">สถานะ</label>
-          <select id="edit-status" class="form-input">
-            <option value="interested" ${customer.status === 'interested' ? 'selected' : ''}>ลูกค้าสนใจสินค้า</option>
-            <option value="confirmed" ${customer.status === 'confirmed' ? 'selected' : ''}>ยืนยันการสั่งซื้อ</option>
-            <option value="pending_payment" ${customer.status === 'pending_payment' ? 'selected' : ''}>รอชำระเงิน</option>
-            <option value="paid" ${customer.status === 'paid' ? 'selected' : ''}>ชำระเงินแล้ว</option>
-            <option value="delivered" ${customer.status === 'delivered' ? 'selected' : ''}>ส่งมอบสินค้า</option>
-            <option value="after_sales" ${customer.status === 'after_sales' ? 'selected' : ''}>บริการหลังการขาย</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
           <label for="edit-note" class="form-label">หมายเหตุ</label>
           <textarea id="edit-note" class="form-input" rows="3">${this.escapeHtml(customer.note || '')}</textarea>
         </div>
@@ -1664,7 +1731,6 @@ isValidPhoneNumber(phone) {
  * Enhanced customer row creation with update functionality
  */
 createCustomerRow(customer) {
-  const statusClass = this.getStatusClass(customer.status);
   const createdDate = new Date(customer.created_at).toLocaleDateString('th-TH');
   const updatedDate = customer.updated_at && customer.updated_at !== customer.created_at 
     ? new Date(customer.updated_at).toLocaleDateString('th-TH')
@@ -1676,7 +1742,6 @@ createCustomerRow(customer) {
         <a href="customer-details.html?id=${encodeURIComponent(customer.id)}" class="customer-name">
           ${this.escapeHtml(customer.name)}
         </a>
-        ${updatedDate ? `<small class="text-muted"><br>อัปเดต: ${updatedDate}</small>` : ''}
       </td>
       <td>
         <a href="tel:${this.escapeHtml(customer.tel)}">${this.escapeHtml(customer.tel || 'ไม่ระบุ')}</a>
@@ -1684,9 +1749,7 @@ createCustomerRow(customer) {
       <td>
         ${customer.email ? `<a href="mailto:${this.escapeHtml(customer.email)}">${this.escapeHtml(customer.email)}</a>` : 'ไม่ระบุ'}
       </td>
-      <td>
-        <span class="status ${statusClass}">${this.getStatusText(customer.status)}</span>
-      </td>
+      <!-- ลบคอลัมน์ status ออก -->
       <td>${createdDate}</td>
       <td>
         <div class="action-buttons">
@@ -1921,39 +1984,6 @@ setupCustomerEventListeners() {
   });
 }
 
-
-
-/**
- * Enhanced status mapping with more statuses
- */
-getStatusClass(status) {
-  const statusMap = {
-    'interested': 'status-interested',
-    'contacted': 'status-contacted',
-    'negotiating': 'status-negotiating',
-    'confirmed': 'status-confirmed',
-    'pending_payment': 'status-pending',
-    'paid': 'status-paid',
-    'delivered': 'status-delivered',
-    'after_sales': 'status-after-sales',
-  };
-  return statusMap[status] || 'status-default';
-}
-
-getStatusText(status) {
-  const statusMap = {
-    'interested': 'ลูกค้าสนใจสินค้า',
-    'contacted': 'ติดต่อแล้ว',
-    'negotiating': 'กำลังเจรจา',
-    'confirmed': 'ยืนยันการสั่งซื้อ',
-    'pending_payment': 'รอชำระเงิน',
-    'paid': 'ชำระเงินแล้ว',
-    'delivered': 'ส่งมอบสินค้า',
-    'after_sales': 'บริการหลังการขาย',
-  };
-  return statusMap[status] || status;
-}
-
 /**
  * Add custom CSS for form validation and enhanced UI
  */
@@ -1975,11 +2005,6 @@ addFormValidationStyles() {
       font-size: 0.75rem;
       margin-top: 0.25rem;
       min-height: 1rem;
-    }
-    
-    .text-muted {
-      color: #6b7280;
-      font-size: 0.75rem;
     }
     
     /* Enhanced Status Colors */

@@ -569,18 +569,6 @@ class SaleController {
           </div>
           
           <div class="form-group">
-            <label for="new-status" class="form-label">สถานะ</label>
-            <select id="new-status" class="form-input">
-              <option value="interested">ลูกค้าสนใจสินค้า</option>
-              <option value="confirmed">ยืนยันการสั่งซื้อ</option>
-              <option value="pending_payment">รอชำระเงิน</option>
-              <option value="paid">ชำระเงินแล้ว</option>
-              <option value="delivered">ส่งมอบสินค้า</option>
-              <option value="after_sales">บริการหลังการขาย</option>
-            </select>
-          </div>
-          
-          <div class="form-group">
             <label for="new-note" class="form-label">หมายเหตุ</label>
             <textarea id="new-note" class="form-input" rows="3" placeholder="กรอกหมายเหตุเพิ่มเติม"></textarea>
           </div>

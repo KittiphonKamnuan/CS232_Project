@@ -263,186 +263,182 @@ class DataService {
     }
   }
 
-  /**
-   * สร้างลูกค้าใหม่
-   * @param {Object} customerData - ข้อมูลลูกค้าใหม่
-   * @returns {Promise<Object>} - ข้อมูลลูกค้าที่สร้างแล้ว
-   */
-  async createCustomer(customerData) {
-    try {
-      console.log('Creating new customer:', customerData);
-      
-      // Validate required fields
-      if (!customerData.fname || !customerData.name) {
-        throw new Error('กรุณากรอกชื่อลูกค้า');
-      }
-      
-      if (!customerData.tel) {
-        throw new Error('กรุณากรอกเบอร์โทรศัพท์');
-      }
-      
-      // Prepare data for API
-      const apiData = {
-        "fname": customerData.fname || "",
-        "lname": customerData.name || "", 
-        "tel": customerData.tel || "",
-        "email": customerData.email || "",
-        "address": customerData.address || "",
-        "status": customerData.status || "interested",
-        "note": customerData.note || "customer1 like this product"
-      };
-      
-      console.log('API Data to send:', JSON.stringify(apiData, null, 2));
-      
-      const response = await fetch(API_ENDPOINTS.CREATE_CUSTOMER, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(apiData)
-      });
-      
-      const responseText = await response.text();
-      console.log('Response text:', responseText);
-      
-      if (!response.ok) {
-        let errorMessage = `Failed to create customer: HTTP ${response.status}`;
-        try {
-          const errorData = JSON.parse(responseText);
-          if (errorData.message) {
-            errorMessage = errorData.message;
-          } else if (errorData.error) {
-            errorMessage = errorData.error;
-          }
-        } catch (parseError) {
-          errorMessage = `Server error: ${responseText}`;
-        }
-        throw new Error(errorMessage);
-      }
-      
-      // Parse response
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        result = { message: responseText };
-      }
-      
-      console.log('Customer created successfully:', result);
-      
-      return this._formatCustomer({
-        ...apiData,
-        customer_id: result.customerId || result.customer_id || `CUST_${Date.now()}`,
-        created_at: new Date().toISOString(),
-        id: result.customerId || result.customer_id || `CUST_${Date.now()}`
-      });
-      
-    } catch (err) {
-      console.error('Error creating customer:', err);
-      
-      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
-      }
-      
-      throw new Error(err.message || 'ไม่สามารถสร้างลูกค้าใหม่ได้ กรุณาลองใหม่อีกครั้ง');
+/**
+ * สร้างลูกค้าใหม่ (อัปเดตแล้ว)
+ * @param {Object} customerData - ข้อมูลลูกค้าใหม่
+ * @returns {Promise<Object>} - ข้อมูลลูกค้าที่สร้างแล้ว
+ */
+async createCustomer(customerData) {
+  try {
+    console.log('Creating new customer:', customerData);
+    
+    // Validate required fields
+    if (!customerData.fname || !customerData.name) {
+      throw new Error('กรุณากรอกชื่อลูกค้า');
     }
+    
+    if (!customerData.tel) {
+      throw new Error('กรุณากรอกเบอร์โทรศัพท์');
+    }
+    
+    // Prepare data for API (เอา status ออก)
+    const apiData = {
+      "fname": customerData.fname || "",
+      "lname": customerData.name || "", 
+      "tel": customerData.tel || "",
+      "email": customerData.email || "",
+      "address": customerData.address || "",
+      "note": customerData.note || ""
+    };
+    
+    console.log('API Data to send:', JSON.stringify(apiData, null, 2));
+    
+    const response = await fetch(API_ENDPOINTS.CREATE_CUSTOMER, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(apiData)
+    });
+    
+    const responseText = await response.text();
+    console.log('Response text:', responseText);
+    
+    if (!response.ok) {
+      let errorMessage = `Failed to create customer: HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(responseText);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } catch (parseError) {
+        errorMessage = `Server error: ${responseText}`;
+      }
+      throw new Error(errorMessage);
+    }
+    
+    // Parse response
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      result = { message: responseText };
+    }
+    
+    console.log('Customer created successfully:', result);
+    
+    return this._formatCustomer({
+      ...apiData,
+      customer_id: result.customerId || result.customer_id || `CUST_${Date.now()}`,
+      created_at: new Date().toISOString(),
+      id: result.customerId || result.customer_id || `CUST_${Date.now()}`
+    });
+    
+  } catch (err) {
+    console.error('Error creating customer:', err);
+    
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+    }
+    
+    throw new Error(err.message || 'ไม่สามารถสร้างลูกค้าใหม่ได้ กรุณาลองใหม่อีกครั้ง');
   }
+}
 
   /**
-   * อัปเดตข้อมูลลูกค้า
-   * @param {string} customerId - รหัสลูกค้า
-   * @param {Object} customerData - ข้อมูลลูกค้าที่ต้องการอัปเดต
-   * @returns {Promise<Object>} - ข้อมูลลูกค้าที่อัปเดตแล้ว
-   */
-  async updateCustomer(customerId, customerData) {
-    try {
-      console.log('Updating customer:', customerId, customerData);
-      
-      // Validate required fields
-      if (!customerData.fname || !customerData.name) {
-        throw new Error('กรุณากรอกชื่อลูกค้า');
-      }
-      
-      if (!customerData.tel) {
-        throw new Error('กรุณากรอกเบอร์โทรศัพท์');
-      }
-      
-      // Prepare data for API - ใช้รูปแบบเดียวกับ CreateCustomer
-      const apiData = {
-        "customer_id": customerId, // เพิ่ม customer_id สำหรับ update
-        "fname": customerData.fname || "",
-        "lname": customerData.name || customerData.lname || "", 
-        "tel": customerData.tel || "",
-        "email": customerData.email || "",
-        "address": customerData.address || "",
-        "status": customerData.status || "interested",
-        "note": customerData.note || ""
-      };
-      
-      console.log('Update API Data to send:', JSON.stringify(apiData, null, 2));
-      
-      const response = await fetch(API_ENDPOINTS.UPDATE_CUSTOMER, {
-        method: 'PUT', // หรือ POST ขึ้นอยู่กับ API design
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(apiData)
-      });
-      
-      console.log('Update response status:', response.status);
-      
-      // Get response text first to debug
-      const responseText = await response.text();
-      console.log('Update response text:', responseText);
-      
-      if (!response.ok) {
-        let errorMessage = `Failed to update customer: HTTP ${response.status}`;
-        try {
-          const errorData = JSON.parse(responseText);
-          if (errorData.message) {
-            errorMessage = errorData.message;
-          } else if (errorData.error) {
-            errorMessage = errorData.error;
-          }
-        } catch (parseError) {
-          console.warn('Could not parse error response:', parseError);
-          errorMessage = `Server error: ${responseText}`;
-        }
-        throw new Error(errorMessage);
-      }
-      
-      // Parse response
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.warn('Could not parse success response:', parseError);
-        result = { message: responseText };
-      }
-      
-      console.log('Customer updated successfully:', result);
-      
-      // Return formatted customer data
-      return this._formatCustomer({
-        ...apiData,
-        customer_id: customerId,
-        id: customerId,
-        updated_at: new Date().toISOString()
-      });
-      
-    } catch (err) {
-      console.error('Error updating customer:', err);
-      
-      // Provide more specific error messages
-      if (err.name === 'TypeError' && err.message.includes('fetch')) {
-        throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
-      }
-      
-      throw new Error(err.message || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
+ * อัปเดตข้อมูลลูกค้า (อัปเดตแล้ว)
+ * @param {string} customerId - รหัสลูกค้า
+ * @param {Object} customerData - ข้อมูลลูกค้าที่ต้องการอัปเดต
+ * @returns {Promise<Object>} - ข้อมูลลูกค้าที่อัปเดตแล้ว
+ */
+async updateCustomer(customerId, customerData) {
+  try {
+    console.log('Updating customer:', customerId, customerData);
+    
+    // Validate required fields
+    if (!customerData.fname || !customerData.name) {
+      throw new Error('กรุณากรอกชื่อลูกค้า');
     }
+    
+    if (!customerData.tel) {
+      throw new Error('กรุณากรอกเบอร์โทรศัพท์');
+    }
+    
+    // Prepare data for API (เอา status ออก)
+    const apiData = {
+      "customer_id": customerId,
+      "fname": customerData.fname || "",
+      "lname": customerData.name || customerData.lname || "", 
+      "tel": customerData.tel || "",
+      "email": customerData.email || "",
+      "address": customerData.address || "",
+      "note": customerData.note || ""
+    };
+    
+    console.log('Update API Data to send:', JSON.stringify(apiData, null, 2));
+    
+    const response = await fetch(API_ENDPOINTS.UPDATE_CUSTOMER, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(apiData)
+    });
+    
+    console.log('Update response status:', response.status);
+    
+    const responseText = await response.text();
+    console.log('Update response text:', responseText);
+    
+    if (!response.ok) {
+      let errorMessage = `Failed to update customer: HTTP ${response.status}`;
+      try {
+        const errorData = JSON.parse(responseText);
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } catch (parseError) {
+        console.warn('Could not parse error response:', parseError);
+        errorMessage = `Server error: ${responseText}`;
+      }
+      throw new Error(errorMessage);
+    }
+    
+    // Parse response
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.warn('Could not parse success response:', parseError);
+      result = { message: responseText };
+    }
+    
+    console.log('Customer updated successfully:', result);
+    
+    // Return formatted customer data
+    return this._formatCustomer({
+      ...apiData,
+      customer_id: customerId,
+      id: customerId,
+      updated_at: new Date().toISOString()
+    });
+    
+  } catch (err) {
+    console.error('Error updating customer:', err);
+    
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      throw new Error('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต');
+    }
+    
+    throw new Error(err.message || 'ไม่สามารถอัปเดตข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
   }
+}
 
   /**
    * ลบข้อมูลลูกค้า
@@ -520,46 +516,167 @@ class DataService {
     }
   }
 
-  /**
-   * ค้นหาลูกค้าด้วย parameters ต่างๆ
-   * @param {Object} searchParams - พารามิเตอร์ในการค้นหา
-   * @returns {Promise<Array>} - รายการลูกค้าที่ค้นพบ
-   */
-  async searchCustomers(searchParams) {
-    try {
-      const allCustomers = await this.getCustomers();
-      
-      if (!searchParams || Object.keys(searchParams).length === 0) {
-        return allCustomers;
-      }
-      
-      let filteredCustomers = allCustomers;
-      
-      // กรองตาม search keyword
-      if (searchParams.search && searchParams.search.trim()) {
-        const searchTerm = searchParams.search.trim().toLowerCase();
-        filteredCustomers = filteredCustomers.filter(customer => 
-          customer.name.toLowerCase().includes(searchTerm) ||
-          customer.id.toLowerCase().includes(searchTerm) ||
-          (customer.tel && customer.tel.includes(searchTerm)) ||
-          (customer.email && customer.email.toLowerCase().includes(searchTerm))
-        );
-      }
-      
-      // กรองตาม status
-      if (searchParams.status && searchParams.status.trim()) {
-        const statusTerm = searchParams.status.trim().toLowerCase();
-        filteredCustomers = filteredCustomers.filter(customer => 
-          customer.status && customer.status.toLowerCase().includes(statusTerm)
-        );
-      }
-      
-      return filteredCustomers;
-    } catch (err) {
-      console.error('Error searching customers:', err);
-      throw new Error('ไม่สามารถค้นหาลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
+
+/**
+ * ค้นหาลูกค้าด้วย parameters ต่างๆ
+ * @param {Object} searchParams - พารามิเตอร์ในการค้นหา
+ * @returns {Promise<Array>} - รายการลูกค้าที่ค้นพบ
+ */
+async searchCustomers(searchParams) {
+  try {
+    const allCustomers = await this.getCustomers();
+    
+    if (!searchParams || Object.keys(searchParams).length === 0) {
+      return allCustomers;
     }
+    
+    let filteredCustomers = allCustomers;
+    
+    // กรองตาม search keyword
+    if (searchParams.search && searchParams.search.trim()) {
+      const searchTerm = searchParams.search.trim().toLowerCase();
+      filteredCustomers = filteredCustomers.filter(customer => 
+        customer.name.toLowerCase().includes(searchTerm) ||
+        customer.id.toLowerCase().includes(searchTerm) ||
+        (customer.tel && customer.tel.includes(searchTerm)) ||
+        (customer.email && customer.email.toLowerCase().includes(searchTerm))
+      );
+    }
+    
+    // กรองตาม dateFilter (แทนที่ status filter)
+    if (searchParams.dateFilter && searchParams.dateFilter.trim()) {
+      const dateFilter = searchParams.dateFilter.trim();
+      const dateRange = this.getDateRange(dateFilter);
+      
+      if (dateRange) {
+        filteredCustomers = filteredCustomers.filter(customer => {
+          const customerDate = new Date(customer.created_at);
+          return customerDate >= dateRange.from && customerDate <= dateRange.to;
+        });
+      }
+    }
+    
+    // กรองตาม custom date range (ถ้ามี)
+    if (searchParams.dateFrom || searchParams.dateTo) {
+      filteredCustomers = filteredCustomers.filter(customer => {
+        const customerDate = new Date(customer.created_at);
+        
+        // ตรวจสอบวันที่เริ่มต้น
+        if (searchParams.dateFrom) {
+          const fromDate = new Date(searchParams.dateFrom);
+          if (customerDate < fromDate) return false;
+        }
+        
+        // ตรวจสอบวันที่สิ้นสุด
+        if (searchParams.dateTo) {
+          const toDate = new Date(searchParams.dateTo);
+          toDate.setHours(23, 59, 59, 999); // ตั้งเป็นสิ้นวัน
+          if (customerDate > toDate) return false;
+        }
+        
+        return true;
+      });
+    }
+    
+    return filteredCustomers;
+  } catch (err) {
+    console.error('Error searching customers:', err);
+    throw new Error('ไม่สามารถค้นหาลูกค้าได้ กรุณาลองใหม่อีกครั้ง');
   }
+}
+
+/**
+ * คำนวณช่วงวันที่สำหรับการกรอง
+ * @param {string} dateFilter - ตัวกรองวันที่
+ * @returns {Object|null} - ช่วงวันที่ {from, to}
+ */
+getDateRange(dateFilter) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  switch (dateFilter) {
+    case 'today':
+      return {
+        from: today,
+        to: new Date(today.getTime() + 24 * 60 * 60 * 1000 - 1)
+      };
+    
+    case 'yesterday':
+      const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+      return {
+        from: yesterday,
+        to: new Date(yesterday.getTime() + 24 * 60 * 60 * 1000 - 1)
+      };
+    
+    case 'this_week':
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      return {
+        from: startOfWeek,
+        to: now
+      };
+    
+    case 'last_week':
+      const lastWeekStart = new Date(today);
+      lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
+      const lastWeekEnd = new Date(lastWeekStart);
+      lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+      lastWeekEnd.setHours(23, 59, 59, 999);
+      return {
+        from: lastWeekStart,
+        to: lastWeekEnd
+      };
+    
+    case 'this_month':
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      return {
+        from: startOfMonth,
+        to: now
+      };
+    
+    case 'last_month':
+      const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
+      lastMonthEnd.setHours(23, 59, 59, 999);
+      return {
+        from: lastMonthStart,
+        to: lastMonthEnd
+      };
+    
+    case 'last_3_months':
+      const threeMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+      return {
+        from: threeMonthsAgo,
+        to: now
+      };
+    
+    case 'last_6_months':
+      const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
+      return {
+        from: sixMonthsAgo,
+        to: now
+      };
+    
+    case 'this_year':
+      const startOfYear = new Date(today.getFullYear(), 0, 1);
+      return {
+        from: startOfYear,
+        to: now
+      };
+    
+    case 'last_year':
+      const lastYearStart = new Date(today.getFullYear() - 1, 0, 1);
+      const lastYearEnd = new Date(today.getFullYear() - 1, 11, 31);
+      lastYearEnd.setHours(23, 59, 59, 999);
+      return {
+        from: lastYearStart,
+        to: lastYearEnd
+      };
+    
+    default:
+      return null;
+  }
+}
   
   /**
    * ===================================
@@ -738,47 +855,46 @@ class DataService {
    * ===================================
    */
   
-  /**
-   * จัดรูปแบบข้อมูลลูกค้าจาก API
-   * @private
-   * @param {Object} apiCustomer - ข้อมูลลูกค้าจาก API
-   * @returns {Object} - ข้อมูลลูกค้าที่จัดรูปแบบแล้ว
-   */
-  _formatCustomer(apiCustomer) {
-    // จัดการกับข้อมูลที่อาจจะมีชื่อฟิลด์ต่างกัน
-    const customerId = apiCustomer.customer_id || apiCustomer.id;
-    const firstName = apiCustomer.customer_fname || apiCustomer.fname || apiCustomer.first_name || '';
-    const lastName = apiCustomer.customer_lname || apiCustomer.name || apiCustomer.lname || apiCustomer.last_name || '';
-    const fullName = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || 'ไม่ระบุชื่อ');
+/**
+ * จัดรูปแบบข้อมูลลูกค้าจาก API (อัปเดตแล้ว)
+ * @private
+ * @param {Object} apiCustomer - ข้อมูลลูกค้าจาก API
+ * @returns {Object} - ข้อมูลลูกค้าที่จัดรูปแบบแล้ว
+ */
+_formatCustomer(apiCustomer) {
+  // จัดการกับข้อมูลที่อาจจะมีชื่อฟิลด์ต่างกัน
+  const customerId = apiCustomer.customer_id || apiCustomer.id;
+  const firstName = apiCustomer.customer_fname || apiCustomer.fname || apiCustomer.first_name || '';
+  const lastName = apiCustomer.customer_lname || apiCustomer.name || apiCustomer.lname || apiCustomer.last_name || '';
+  const fullName = firstName && lastName ? `${firstName} ${lastName}` : (firstName || lastName || 'ไม่ระบุชื่อ');
+  
+  return {
+    id: customerId,
+    firstName: firstName,
+    lastName: lastName,
+    name: fullName,
+    tel: apiCustomer.customer_tel || apiCustomer.tel || apiCustomer.phone || '',
+    email: apiCustomer.customer_email || apiCustomer.email || '',
+    address: apiCustomer.customer_address || apiCustomer.address || '',
+    note: apiCustomer.note || '',
+    created_at: apiCustomer.created_at || new Date().toISOString(),
+    updated_at: apiCustomer.updated_at || new Date().toISOString(),
     
-    return {
-      id: customerId,
-      firstName: firstName,
-      lastName: lastName,
-      name: fullName,
-      tel: apiCustomer.customer_tel || apiCustomer.tel || apiCustomer.phone || '',
-      email: apiCustomer.customer_email || apiCustomer.email || '',
-      address: apiCustomer.customer_address || apiCustomer.address || '',
-      status: apiCustomer.customer_status || apiCustomer.status || 'interested',
-      note: apiCustomer.note || '',
-      created_at: apiCustomer.created_at || new Date().toISOString(),
-      updated_at: apiCustomer.updated_at || new Date().toISOString(),
-      
-      // ข้อมูลเพิ่มเติม
-      totalOrders: parseInt(apiCustomer.totalOrders) || 0,
-      totalSpent: parseFloat(apiCustomer.totalSpent) || 0,
-      lastOrderDate: apiCustomer.lastOrderDate || null,
-      tags: apiCustomer.tags || [],
-      
-      // การติดต่อล่าสุด
-      lastContact: apiCustomer.lastContact || null,
-      contactMethod: apiCustomer.contactMethod || 'phone',
-      
-      // สถานะลูกค้า
-      priority: apiCustomer.priority || 'normal', // low, normal, high
-      source: apiCustomer.source || 'website' // website, referral, social, etc.
-    };
-  }
+    // ข้อมูลเพิ่มเติม (เอา status ออก)
+    totalOrders: parseInt(apiCustomer.totalOrders) || 0,
+    totalSpent: parseFloat(apiCustomer.totalSpent) || 0,
+    lastOrderDate: apiCustomer.lastOrderDate || null,
+    tags: apiCustomer.tags || [],
+    
+    // การติดต่อล่าสุด
+    lastContact: apiCustomer.lastContact || null,
+    contactMethod: apiCustomer.contactMethod || 'phone',
+    
+    // ข้อมูลอื่นๆ (เอา status ออก)
+    priority: apiCustomer.priority || 'normal', // low, normal, high
+    source: apiCustomer.source || 'website' // website, referral, social, etc.
+  };
+}
 
   /**
    * จัดรูปแบบข้อมูลสินค้าจาก API

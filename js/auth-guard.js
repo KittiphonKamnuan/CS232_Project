@@ -3,6 +3,7 @@
  * 
  * ไฟล์นี้ใช้สำหรับตรวจสอบการยืนยันตัวตนในหน้าที่ต้องการการยืนยันตัวตน
  * หากผู้ใช้ยังไม่ได้เข้าสู่ระบบ จะถูกเปลี่ยนเส้นทางไปยังหน้าล็อกอิน
+ * อัปเดต: ใช้ Cognito User Attributes
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -75,33 +76,58 @@ function checkTokenExpiration(token) {
 }
 
 /**
- * อัพเดทข้อมูลผู้ใช้ในส่วนต่างๆ ของ UI
+ * อัพเดทข้อมูลผู้ใช้ในส่วนต่างๆ ของ UI (อัปเดตสำหรับ Cognito)
  */
 function updateUserInfoUI() {
     // ดึงข้อมูลผู้ใช้จาก sessionStorage
     const userDataStr = sessionStorage.getItem('infohub_user');
     if (!userDataStr) return;
     
-    const userData = JSON.parse(userDataStr);
-    
-    // อัพเดทชื่อผู้ใช้ในส่วน header
-    const userGreeting = document.querySelector('.user-greeting');
-    if (userGreeting) {
-        // ตรวจสอบว่ามีชื่อจริงหรือไม่
-        if (userData.given_name) {
-            userGreeting.textContent = `สวัสดี, คุณ${userData.given_name}`;
-        } else if (userData.name) {
-            userGreeting.textContent = `สวัสดี, คุณ${userData.name}`;
-        } else {
-            userGreeting.textContent = `สวัสดี, ${userData.email || userData.username || 'คุณ'}`;
+    try {
+        const userData = JSON.parse(userDataStr);
+        console.log('User data from Cognito:', userData);
+        
+        // อัพเดทชื่อผู้ใช้ในส่วน header
+        const userGreeting = document.querySelector('.user-greeting');
+        if (userGreeting) {
+            // ใช้ข้อมูลจาก Cognito attributes
+            let displayName = '';
+            
+            if (userData.name) {
+                displayName = userData.name;
+            } else if (userData.nickname) {
+                displayName = userData.nickname;
+            } else if (userData.email) {
+                // ใช้ส่วนหน้าของอีเมลถ้าไม่มีชื่อ
+                displayName = userData.email.split('@')[0];
+            } else {
+                displayName = 'ผู้ใช้งาน';
+            }
+            
+            userGreeting.textContent = `สวัสดี, คุณ${displayName}`;
         }
-    }
-    
-    // อัพเดทตัวอักษรแรกในอวตาร์
-    const userAvatar = document.querySelector('.user-avatar span');
-    if (userAvatar) {
-        const firstChar = (userData.given_name || userData.name || userData.email || userData.username || '?').charAt(0).toUpperCase();
-        userAvatar.textContent = firstChar;
+        
+        // อัพเดทตัวอักษรแรกในอวตาร์
+        const userAvatar = document.querySelector('.user-avatar span');
+        if (userAvatar) {
+            let firstChar = 'U';
+            
+            if (userData.name) {
+                firstChar = userData.name.charAt(0).toUpperCase();
+            } else if (userData.nickname) {
+                firstChar = userData.nickname.charAt(0).toUpperCase();
+            } else if (userData.email) {
+                firstChar = userData.email.charAt(0).toUpperCase();
+            }
+            
+            userAvatar.textContent = firstChar;
+        }
+        
+        // อัพเดทข้อมูลในโปรไฟล์ (ถ้าอยู่ในหน้าโปรไฟล์)
+        updateProfilePageInfo(userData);
+        
+    } catch (error) {
+        console.error('Error parsing user data:', error);
     }
     
     // ตั้งค่า event listener สำหรับปุ่มออกจากระบบ
@@ -121,3 +147,87 @@ function updateUserInfoUI() {
         });
     }
 }
+
+/**
+ * อัพเดทข้อมูลในหน้าโปรไฟล์
+ */
+function updateProfilePageInfo(userData) {
+    // ตรวจสอบว่าอยู่ในหน้าโปรไฟล์หรือไม่
+    if (!window.location.pathname.includes('profile.html')) return;
+    
+    // อัพเดทชื่อในหน้าโปรไฟล์
+    const profileName = document.querySelector('.profile-info h2');
+    if (profileName && userData.name) {
+        profileName.textContent = `คุณ${userData.name}`;
+    }
+    
+    // อัพเดทข้อมูลติดต่อ
+    const profileContact = document.querySelector('.profile-contact');
+    if (profileContact) {
+        const email = userData.email || 'ไม่ระบุอีเมล';
+        const phone = userData.phone_number || 'ไม่ระบุเบอร์โทร';
+        
+        profileContact.innerHTML = `
+            <p><i class="fas fa-envelope"></i> ${email}</p>
+            <p><i class="fas fa-phone"></i> ${phone}</p>
+        `;
+    }
+    
+    // อัพเดทรูปโปรไฟล์
+    const profileAvatars = document.querySelectorAll('.profile-avatar span');
+    profileAvatars.forEach(avatar => {
+        let firstChar = 'U';
+        
+        if (userData.name) {
+            firstChar = userData.name.charAt(0).toUpperCase();
+        } else if (userData.nickname) {
+            firstChar = userData.nickname.charAt(0).toUpperCase();
+        } else if (userData.email) {
+            firstChar = userData.email.charAt(0).toUpperCase();
+        }
+        
+        avatar.textContent = firstChar;
+    });
+    
+    // อัพเดทตำแหน่งงาน (ถ้ามี)
+    const jobTitle = document.querySelector('.job-title');
+    if (jobTitle) {
+        jobTitle.textContent = 'พนักงานขาย | ฝ่ายขายอิเล็กทรอนิกส์';
+    }
+}
+
+/**
+ * ฟังก์ชันสำหรับดึงข้อมูลผู้ใช้ปัจจุบัน
+ */
+function getCurrentUser() {
+    const userDataStr = sessionStorage.getItem('infohub_user');
+    if (!userDataStr) return null;
+    
+    try {
+        return JSON.parse(userDataStr);
+    } catch (error) {
+        console.error('Error parsing user data:', error);
+        return null;
+    }
+}
+
+/**
+ * ฟังก์ชันสำหรับอัพเดทข้อมูลผู้ใช้
+ */
+function updateUserData(newUserData) {
+    try {
+        sessionStorage.setItem('infohub_user', JSON.stringify(newUserData));
+        updateUserInfoUI();
+        return true;
+    } catch (error) {
+        console.error('Error updating user data:', error);
+        return false;
+    }
+}
+
+// Export functions ที่อาจจะใช้ในไฟล์อื่น
+window.InfoHubAuth = {
+    getCurrentUser,
+    updateUserData,
+    updateUserInfoUI
+};

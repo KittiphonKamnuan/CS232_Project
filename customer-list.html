@@ -94,14 +94,18 @@
               <i class="fas fa-search"></i>
             </div>
             <div class="filter-select">
-              <select id="status-select">
-                <option value="">ทุกสถานะ</option>
-                <option value="interested">ลูกค้าสนใจสินค้า</option>
-                <option value="confirmed">ยืนยันการสั่งซื้อ</option>
-                <option value="pending_payment">รอชำระเงิน</option>
-                <option value="paid">ชำระเงินแล้ว</option>
-                <option value="delivered">ส่งมอบสินค้า</option>
-                <option value="after_sales">บริการหลังการขาย</option>
+              <select id="date-filter-select">
+                <option value="">ทุกช่วงเวลา</option>
+                <option value="today">วันนี้</option>
+                <option value="yesterday">เมื่อวาน</option>
+                <option value="this_week">สัปดาห์นี้</option>
+                <option value="last_week">สัปดาห์ที่แล้ว</option>
+                <option value="this_month">เดือนนี้</option>
+                <option value="last_month">เดือนที่แล้ว</option>
+                <option value="last_3_months">3 เดือนที่แล้ว</option>
+                <option value="last_6_months">6 เดือนที่แล้ว</option>
+                <option value="this_year">ปีนี้</option>
+                <option value="last_year">ปีที่แล้ว</option>
               </select>
             </div>
             <div class="search-actions">
@@ -214,18 +218,6 @@
           <div class="form-group">
             <label for="new-address" class="form-label">ที่อยู่</label>
             <textarea id="new-address" class="form-input" rows="3" placeholder="กรอกที่อยู่"></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="new-status" class="form-label">สถานะ</label>
-            <select id="new-status" class="form-input">
-              <option value="interested">ลูกค้าสนใจสินค้า</option>
-              <option value="confirmed">ยืนยันการสั่งซื้อ</option>
-              <option value="pending_payment">รอชำระเงิน</option>
-              <option value="paid">ชำระเงินแล้ว</option>
-              <option value="delivered">ส่งมอบสินค้า</option>
-              <option value="after_sales">บริการหลังการขาย</option>
-            </select>
           </div>
           
           <div class="form-group">

@@ -464,6 +464,113 @@
   font-style: italic;
 }
 
+/* Sales Pipeline - Styled with common.css variables */
+
+.pipeline-container {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-4);
+  background-color: var(--color-surface);
+  padding: var(--spacing-4);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+
+.pipeline-stage {
+  flex: 1;
+  min-width: 10rem;
+  color: var(--color-primary-contrast);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.pipeline-stage:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+
+.pipeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-3);
+}
+
+.pipeline-header h3 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  color: inherit;
+  margin: 0;
+}
+
+.pipeline-count {
+  font-size: var(--font-size-sm);
+  background-color: rgba(255, 255, 255, 0.2);
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--border-radius-full);
+}
+
+.pipeline-body {
+  margin-bottom: var(--spacing-3);
+}
+
+.pipeline-amount {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  margin-bottom: var(--spacing-1);
+}
+
+.pipeline-percent {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.pipeline-footer {
+  height: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: var(--border-radius-full);
+  overflow: hidden;
+}
+
+.pipeline-progress {
+  height: 100%;
+  background-color: var(--color-primary-contrast);
+  border-radius: var(--border-radius-full);
+  transition: width var(--transition-normal);
+}
+
+/* Custom stage colors for each sales status */
+.pipeline-interested {
+  background-color: var(--color-info);
+}
+
+.pipeline-confirmed {
+  background-color: var(--color-primary);
+}
+
+.pipeline-payment-pending {
+  background-color: var(--color-warning);
+  color: var(--color-text);
+}
+
+.pipeline-paid {
+  background-color: var(--color-success);
+}
+
+.pipeline-delivered {
+  background-color: var(--color-primary-dark);
+}
+
+.pipeline-aftersale {
+  background-color: var(--color-purple);
+}
+
+
 /* ========================================================================
    COMMENTS SECTION
    ======================================================================== */

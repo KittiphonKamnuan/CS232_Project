@@ -2,6 +2,7 @@
  * InfoHub 360 - Login Handler
  * 
  * ไฟล์นี้จัดการการล็อกอินผ่าน AWS Cognito
+ * อัปเดต: รองรับ Cognito User Attributes และจัดการข้อมูลผู้ใช้ที่ถูกต้อง
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -71,29 +72,21 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
     
-    const username = usernameInput.value;
+    const username = usernameInput.value.trim();
     const password = passwordInput.value;
     
     if (!username || !password) {
-      if (errorMessage && errorText) {
-        errorText.textContent = 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน';
-        errorMessage.classList.remove('hide');
-      }
+      showError('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
       return;
     }
     
     console.log('Attempting login for user:', username);
     
     // แสดงสถานะกำลังโหลด
-    if (loadingSpinner && buttonText) {
-      loadingSpinner.classList.remove('hide');
-      buttonText.textContent = 'กำลังเข้าสู่ระบบ...';
-    }
+    showLoading(true);
     
     // ซ่อนข้อความผิดพลาด (ถ้ามี)
-    if (errorMessage) {
-      errorMessage.classList.add('hide');
-    }
+    hideError();
     
     // เริ่มกระบวนการล็อกอินกับ Cognito
     authenticateWithCognito(username, password);
@@ -109,8 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
       Password: password
     };
     
-    // ไม่จำเป็นต้องส่ง SecretHash ถ้าปิดการใช้งาน Client Secret ในหน้า AWS Console
-    
     const authenticationDetails = new AmazonCognitoIdentity.AuthenticationDetails(authenticationData);
     
     const userData = {
@@ -124,108 +115,272 @@ document.addEventListener('DOMContentLoaded', function() {
     cognitoUser.authenticateUser(authenticationDetails, {
       onSuccess: function(result) {
         console.log('Login successful');
-        
-        // เก็บ tokens ใน session storage
-        const idToken = result.getIdToken().getJwtToken();
-        const accessToken = result.getAccessToken().getJwtToken();
-        const refreshToken = result.getRefreshToken().getToken();
-        
-        sessionStorage.setItem('infohub_auth', idToken);
-        sessionStorage.setItem('infohub_access_token', accessToken);
-        sessionStorage.setItem('infohub_refresh_token', refreshToken);
-        
-        // เก็บข้อมูลผู้ใช้
-        const payload = result.getIdToken().payload;
-        sessionStorage.setItem('infohub_user', JSON.stringify(payload));
-        
-        // จดจำ username หากทำเครื่องหมายที่ "จดจำฉันไว้ในระบบ"
-        const rememberMe = document.getElementById('rememberMe');
-        if (rememberMe && rememberMe.checked) {
-          localStorage.setItem('infohub_remember_username', username);
-        } else {
-          localStorage.removeItem('infohub_remember_username');
-        }
-        
-        // เปลี่ยนเส้นทางไปยังหน้าหลัก
-        window.location.href = '/';
+        handleLoginSuccess(result, username, cognitoUser);
       },
       
       onFailure: function(err) {
         console.error('Login error:', err);
-        
-        // ซ่อนสถานะกำลังโหลด
-        if (loadingSpinner && buttonText) {
-          loadingSpinner.classList.add('hide');
-          buttonText.textContent = 'เข้าสู่ระบบ';
-        }
-        
-        // แสดงข้อความผิดพลาด
-        if (errorMessage && errorText) {
-          let errorMsg = 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
-          
-          if (err.message) {
-            if (err.message.includes('Incorrect username or password')) {
-              errorMsg = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
-            } else if (err.message.includes('User is not confirmed')) {
-              errorMsg = 'บัญชีผู้ใช้ยังไม่ได้รับการยืนยัน กรุณาตรวจสอบอีเมลของคุณ';
-            } else if (err.message.includes('User does not exist')) {
-              errorMsg = 'ไม่พบบัญชีผู้ใช้นี้ในระบบ';
-            } else if (err.message.includes('SECRET_HASH was not received')) {
-              errorMsg = 'เกิดข้อผิดพลาดในการคำนวณรหัสตรวจสอบ กรุณาติดต่อผู้ดูแลระบบ';
-            } else {
-              errorMsg = err.message;
-            }
-          }
-          
-          errorText.textContent = errorMsg;
-          errorMessage.classList.remove('hide');
-        }
+        handleLoginError(err);
       },
       
       newPasswordRequired: function(userAttributes, requiredAttributes) {
-        // สำหรับกรณีที่ต้องเปลี่ยนรหัสผ่านใหม่เมื่อล็อกอินครั้งแรก
         console.log('New password required');
-        
-        // ซ่อนสถานะกำลังโหลด
-        if (loadingSpinner && buttonText) {
-          loadingSpinner.classList.add('hide');
-          buttonText.textContent = 'เข้าสู่ระบบ';
-        }
-        
-        // แสดงข้อความแจ้งให้ติดต่อผู้ดูแลระบบ
-        if (errorMessage && errorText) {
-          errorText.textContent = 'ต้องเปลี่ยนรหัสผ่านใหม่ กรุณาติดต่อผู้ดูแลระบบ';
-          errorMessage.classList.remove('hide');
-        }
+        handleNewPasswordRequired(userAttributes, requiredAttributes, cognitoUser);
       },
       
       mfaRequired: function(challengeName, challengeParameters) {
-        // สำหรับกรณีที่ต้องใช้ MFA
         console.log('MFA required');
-        
-        // ซ่อนสถานะกำลังโหลด
-        if (loadingSpinner && buttonText) {
-          loadingSpinner.classList.add('hide');
-          buttonText.textContent = 'เข้าสู่ระบบ';
-        }
-        
-        // แสดงข้อความแจ้งให้ติดต่อผู้ดูแลระบบ
-        if (errorMessage && errorText) {
-          errorText.textContent = 'ต้องยืนยันตัวตนด้วยรหัส MFA กรุณาติดต่อผู้ดูแลระบบ';
-          errorMessage.classList.remove('hide');
-        }
+        handleMfaRequired(challengeName, challengeParameters);
       }
     });
   }
   
-  // ตรวจสอบว่ามี username ที่จำไว้หรือไม่
-  const rememberedUsername = localStorage.getItem('infohub_remember_username');
-  if (rememberedUsername) {
-    const usernameInput = document.getElementById('username');
-    const rememberMeCheckbox = document.getElementById('rememberMe');
+  // จัดการการล็อกอินสำเร็จ
+  function handleLoginSuccess(result, username, cognitoUser) {
+    try {
+      // เก็บ tokens ใน session storage
+      const idToken = result.getIdToken().getJwtToken();
+      const accessToken = result.getAccessToken().getJwtToken();
+      const refreshToken = result.getRefreshToken().getToken();
+      
+      sessionStorage.setItem('infohub_auth', idToken);
+      sessionStorage.setItem('infohub_access_token', accessToken);
+      sessionStorage.setItem('infohub_refresh_token', refreshToken);
+      
+      // ดึงข้อมูลผู้ใช้จาก ID Token
+      const idTokenPayload = result.getIdToken().payload;
+      console.log('ID Token Payload:', idTokenPayload);
+      
+      // ดึงข้อมูล User Attributes เพิ่มเติม
+      getUserAttributes(cognitoUser, idTokenPayload, username);
+      
+    } catch (error) {
+      console.error('Error processing login success:', error);
+      showError('เกิดข้อผิดพลาดในการบันทึกข้อมูลการล็อกอิน');
+      showLoading(false);
+    }
+  }
+  
+  // ดึงข้อมูล User Attributes จาก Cognito
+  function getUserAttributes(cognitoUser, idTokenPayload, username) {
+    cognitoUser.getUserAttributes(function(err, attributes) {
+      if (err) {
+        console.error('Error getting user attributes:', err);
+        // ใช้ข้อมูลจาก ID Token เป็นหลัก
+        saveUserDataAndRedirect(idTokenPayload, null, username);
+        return;
+      }
+      
+      console.log('User attributes:', attributes);
+      
+      // แปลง attributes array เป็น object
+      const userAttributes = {};
+      if (attributes) {
+        attributes.forEach(attribute => {
+          userAttributes[attribute.Name] = attribute.Value;
+        });
+      }
+      
+      console.log('Processed user attributes:', userAttributes);
+      
+      // บันทึกข้อมูลและเปลี่ยนเส้นทาง
+      saveUserDataAndRedirect(idTokenPayload, userAttributes, username);
+    });
+  }
+  
+  // บันทึกข้อมูลผู้ใช้และเปลี่ยนเส้นทาง
+  function saveUserDataAndRedirect(idTokenPayload, userAttributes, username) {
+    try {
+      // รวมข้อมูลจาก ID Token และ User Attributes
+      const combinedUserData = {
+        // ข้อมูลจาก ID Token
+        sub: idTokenPayload.sub,
+        email_verified: idTokenPayload.email_verified,
+        iss: idTokenPayload.iss,
+        'cognito:username': idTokenPayload['cognito:username'] || username,
+        aud: idTokenPayload.aud,
+        event_id: idTokenPayload.event_id,
+        token_use: idTokenPayload.token_use,
+        auth_time: idTokenPayload.auth_time,
+        exp: idTokenPayload.exp,
+        iat: idTokenPayload.iat,
+        
+        // ข้อมูลจาก User Attributes (ถ้ามี)
+        email: userAttributes?.email || idTokenPayload.email,
+        name: userAttributes?.name || idTokenPayload.name,
+        nickname: userAttributes?.nickname || idTokenPayload.nickname,
+        phone_number: userAttributes?.phone_number || idTokenPayload.phone_number,
+        picture: userAttributes?.picture || idTokenPayload.picture,
+        
+        // ข้อมูลเพิ่มเติม
+        username: username,
+        loginTime: new Date().toISOString()
+      };
+      
+      console.log('Combined user data:', combinedUserData);
+      
+      // เก็บข้อมูลผู้ใช้ใน sessionStorage
+      sessionStorage.setItem('infohub_user', JSON.stringify(combinedUserData));
+      
+      // จดจำ username หากทำเครื่องหมายที่ "จดจำฉันไว้ในระบบ"
+      handleRememberMe(username);
+      
+      // แสดงข้อความสำเร็จ
+      showSuccess('เข้าสู่ระบบสำเร็จ กำลังนำคุณเข้าสู่หน้าหลัก...');
+      
+      // เปลี่ยนเส้นทางไปยังหน้าที่ต้องการ
+      setTimeout(() => {
+        const redirectUrl = sessionStorage.getItem('redirect_after_login') || 'index.html';
+        sessionStorage.removeItem('redirect_after_login');
+        window.location.href = redirectUrl;
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Error saving user data:', error);
+      showError('เกิดข้อผิดพลาดในการบันทึกข้อมูลผู้ใช้');
+      showLoading(false);
+    }
+  }
+  
+  // จัดการ Remember Me
+  function handleRememberMe(username) {
+    const rememberMe = document.getElementById('rememberMe');
+    if (rememberMe && rememberMe.checked) {
+      localStorage.setItem('infohub_remember_username', username);
+    } else {
+      localStorage.removeItem('infohub_remember_username');
+    }
+  }
+  
+  // จัดการข้อผิดพลาดการล็อกอิน
+  function handleLoginError(err) {
+    showLoading(false);
     
-    if (usernameInput) usernameInput.value = rememberedUsername;
-    if (rememberMeCheckbox) rememberMeCheckbox.checked = true;
+    let errorMsg = 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+    
+    if (err.message) {
+      if (err.message.includes('Incorrect username or password')) {
+        errorMsg = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+      } else if (err.message.includes('User is not confirmed')) {
+        errorMsg = 'บัญชีผู้ใช้ยังไม่ได้รับการยืนยัน กรุณาติดต่อผู้ดูแลระบบ';
+      } else if (err.message.includes('User does not exist')) {
+        errorMsg = 'ไม่พบบัญชีผู้ใช้นี้ในระบบ กรุณาติดต่อผู้ดูแลระบบ';
+      } else if (err.message.includes('UserNotFoundException')) {
+        errorMsg = 'ไม่พบบัญชีผู้ใช้นี้ในระบบ';
+      } else if (err.message.includes('NotAuthorizedException')) {
+        errorMsg = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
+      } else if (err.message.includes('TooManyRequestsException')) {
+        errorMsg = 'มีการพยายามเข้าสู่ระบบมากเกินไป กรุณารอสักครู่แล้วลองใหม่';
+      } else if (err.message.includes('NetworkError') || err.message.includes('fetch')) {
+        errorMsg = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาตรวจสอบอินเทอร์เน็ตและลองใหม่';
+      } else {
+        errorMsg = `เกิดข้อผิดพลาด: ${err.message}`;
+      }
+    }
+    
+    showError(errorMsg);
+  }
+  
+  // จัดการกรณีต้องเปลี่ยนรหัสผ่านใหม่
+  function handleNewPasswordRequired(userAttributes, requiredAttributes, cognitoUser) {
+    showLoading(false);
+    showError('ต้องเปลี่ยนรหัสผ่านใหม่ กรุณาติดต่อผู้ดูแลระบบ');
+    
+    // TODO: เพิ่มฟังก์ชันการเปลี่ยนรหัสผ่านในอนาคต
+    console.log('Required attributes for password change:', requiredAttributes);
+    console.log('User attributes:', userAttributes);
+  }
+  
+  // จัดการกรณีต้องใช้ MFA
+  function handleMfaRequired(challengeName, challengeParameters) {
+    showLoading(false);
+    showError('ต้องยืนยันตัวตนด้วยรหัส MFA กรุณาติดต่อผู้ดูแลระบบ');
+    
+    // TODO: เพิ่มฟังก์ชัน MFA ในอนาคต
+    console.log('MFA Challenge:', challengeName);
+    console.log('Challenge Parameters:', challengeParameters);
+  }
+  
+  // ฟังก์ชันแสดง/ซ่อนสถานะโหลด
+  function showLoading(show) {
+    if (loadingSpinner && buttonText) {
+      if (show) {
+        loadingSpinner.classList.remove('hide');
+        buttonText.textContent = 'กำลังเข้าสู่ระบบ...';
+        if (loginButton) loginButton.disabled = true;
+      } else {
+        loadingSpinner.classList.add('hide');
+        buttonText.textContent = 'เข้าสู่ระบบ';
+        if (loginButton) loginButton.disabled = false;
+      }
+    }
+  }
+  
+  // ฟังก์ชันแสดงข้อความผิดพลาด
+  function showError(message) {
+    if (errorMessage && errorText) {
+      errorText.textContent = message;
+      errorMessage.classList.remove('hide');
+      
+      // Auto hide error after 10 seconds
+      setTimeout(() => {
+        hideError();
+      }, 10000);
+    }
+  }
+  
+  // ฟังก์ชันซ่อนข้อความผิดพลาด
+  function hideError() {
+    if (errorMessage) {
+      errorMessage.classList.add('hide');
+    }
+  }
+  
+  // ฟังก์ชันแสดงข้อความสำเร็จ
+  function showSuccess(message) {
+    // สร้าง success message element ถ้ายังไม่มี
+    let successMessage = document.getElementById('successMessage');
+    if (!successMessage) {
+      successMessage = document.createElement('div');
+      successMessage.id = 'successMessage';
+      successMessage.className = 'alert alert-success';
+      successMessage.innerHTML = `
+        <div class="alert-content">
+          <i class="fas fa-check-circle"></i>
+          <span id="successText"></span>
+        </div>
+      `;
+      
+      // แทรกก่อน error message
+      if (errorMessage && errorMessage.parentNode) {
+        errorMessage.parentNode.insertBefore(successMessage, errorMessage);
+      }
+    }
+    
+    const successText = document.getElementById('successText');
+    if (successText) {
+      successText.textContent = message;
+    }
+    
+    successMessage.classList.remove('hide');
+    hideError(); // ซ่อน error message ถ้ามี
+  }
+  
+  // ตรวจสอบว่ามี username ที่จำไว้หรือไม่
+  function loadRememberedUsername() {
+    const rememberedUsername = localStorage.getItem('infohub_remember_username');
+    if (rememberedUsername) {
+      const usernameInput = document.getElementById('username');
+      const rememberMeCheckbox = document.getElementById('rememberMe');
+      
+      if (usernameInput) usernameInput.value = rememberedUsername;
+      if (rememberMeCheckbox) rememberMeCheckbox.checked = true;
+      
+      // Focus ที่ password field
+      if (passwordInput) {
+        passwordInput.focus();
+      }
+    }
   }
   
   // จัดการลิงก์สมัครสมาชิก
@@ -233,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (signupLink) {
     signupLink.addEventListener('click', function(e) {
       e.preventDefault();
-      alert('กรุณาติดต่อผู้ดูแลระบบเพื่อสร้างบัญชีผู้ใช้ใหม่');
+      alert('กรุณาติดต่อผู้ดูแลระบบเพื่อสร้างบัญชีผู้ใช้ใหม่\n\nอีเมล: admin@infohub360.com\nโทร: 02-123-4567');
     });
   }
   
@@ -242,30 +397,107 @@ document.addEventListener('DOMContentLoaded', function() {
   if (forgotPasswordLink) {
     forgotPasswordLink.addEventListener('click', function(e) {
       e.preventDefault();
-      alert('กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน');
+      alert('กรุณาติดต่อผู้ดูแลระบบเพื่อรีเซ็ตรหัสผ่าน\n\nอีเมล: admin@infohub360.com\nโทร: 02-123-4567');
     });
   }
   
   // ตรวจสอบพารามิเตอร์ error ใน URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const errorParam = urlParams.get('error');
-  
-  if (errorParam) {
-    // แสดงข้อความผิดพลาด
-    if (errorMessage && errorText) {
-      errorText.textContent = decodeURIComponent(errorParam);
-      errorMessage.classList.remove('hide');
+  function checkUrlError() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
+    
+    if (errorParam) {
+      showError(decodeURIComponent(errorParam));
+      
+      // ลบ error parameter จาก URL
+      const url = new URL(window.location);
+      url.searchParams.delete('error');
+      window.history.replaceState({}, document.title, url);
     }
   }
   
+  // ตรวจสอบว่าผู้ใช้ล็อกอินอยู่แล้วหรือไม่
+  function checkExistingLogin() {
+    const authToken = sessionStorage.getItem('infohub_auth');
+    if (authToken) {
+      try {
+        // ตรวจสอบว่า token ยังใช้ได้อยู่หรือไม่
+        const payload = JSON.parse(atob(authToken.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        
+        if (payload.exp > currentTime) {
+          // Token ยังใช้ได้ เปลี่ยนเส้นทางไปหน้าหลัก
+          console.log('User already logged in, redirecting...');
+          window.location.href = 'index.html';
+          return true;
+        } else {
+          // Token หมดอายุ ลบข้อมูลเก่า
+          sessionStorage.removeItem('infohub_auth');
+          sessionStorage.removeItem('infohub_access_token');
+          sessionStorage.removeItem('infohub_refresh_token');
+          sessionStorage.removeItem('infohub_user');
+        }
+      } catch (error) {
+        console.error('Error checking existing login:', error);
+        // ลบข้อมูลเก่าถ้ามีปัญหา
+        sessionStorage.clear();
+      }
+    }
+    return false;
+  }
+  
   // ตรวจสอบการกด Enter ในช่องข้อมูล
-  const inputs = document.querySelectorAll('#loginForm input');
-  inputs.forEach(input => {
-    input.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleLogin();
+  function setupKeyboardEvents() {
+    const inputs = document.querySelectorAll('#loginForm input');
+    inputs.forEach(input => {
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleLogin();
+        }
+      });
+    });
+    
+    // ปิด error message เมื่อมีการพิมพ์
+    const usernameInput = document.getElementById('username');
+    const passwordInputField = document.getElementById('password');
+    
+    [usernameInput, passwordInputField].forEach(input => {
+      if (input) {
+        input.addEventListener('input', function() {
+          hideError();
+        });
       }
     });
-  });
+  }
+  
+  // Initialize functions
+  function initialize() {
+    // ตรวจสอบว่าผู้ใช้ล็อกอินอยู่แล้วหรือไม่
+    if (checkExistingLogin()) {
+      return;
+    }
+    
+    // โหลด username ที่จำไว้
+    loadRememberedUsername();
+    
+    // ตรวจสอบ URL error
+    checkUrlError();
+    
+    // ตั้งค่า keyboard events
+    setupKeyboardEvents();
+    
+    console.log('Login page initialized');
+  }
+  
+  // เริ่มต้นการทำงาน
+  initialize();
+  
+  // Export ฟังก์ชันสำหรับใช้งานภายนอก (ถ้าจำเป็น)
+  window.InfoHubLogin = {
+    handleLogin: handleLogin,
+    showError: showError,
+    showSuccess: showSuccess,
+    hideError: hideError
+  };
 });
