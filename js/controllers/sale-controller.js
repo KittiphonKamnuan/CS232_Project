@@ -2,7 +2,7 @@
  * InfoHub 360 - Sale Controller
  * 
  * Controller สำหรับจัดการข้อมูลรายละเอียดการขาย
- * ปรับปรุงให้ใช้ข้อมูลจริงจาก API เท่านั้น
+ * อัปเดต: ใช้ข้อมูลลูกค้าจริงจาก API แทน mockup
  */
 
 import dataService from '../services/data-service.js';
@@ -104,8 +104,11 @@ class SaleController {
     try {
       this.showLoading();
       
-      // Load products data
-      await this.loadProducts();
+      // Load products and customers data in parallel
+      await Promise.all([
+        this.loadProducts(),
+        this.loadCustomers()
+      ]);
       
       // Load specific product if provided
       let selectedProduct = null;
@@ -121,12 +124,22 @@ class SaleController {
         }
       }
       
-      // Skip customer loading for now since API is not ready
-      // Set up mock customers for demo
-      this.setupMockCustomers();
+      // Load specific customer if provided
+      let selectedCustomer = null;
+      if (this.customerIdFromUrl) {
+        try {
+          selectedCustomer = await dataService.getCustomerById(this.customerIdFromUrl);
+          console.log('Loaded selected customer:', selectedCustomer);
+        } catch (error) {
+          console.warn('Could not load specific customer:', error);
+          if (window.InfoHubApp) {
+            window.InfoHubApp.showNotification('ไม่สามารถโหลดข้อมูลลูกค้าที่เลือกได้', 'warning');
+          }
+        }
+      }
       
       // Render new sale form
-      this.renderNewSaleForm(selectedProduct, null);
+      this.renderNewSaleForm(selectedProduct, selectedCustomer);
       
     } catch (error) {
       console.error('Error initializing new sale mode:', error);
@@ -142,41 +155,26 @@ class SaleController {
   async loadProducts() {
     try {
       this.products = await dataService.getProducts();
+      console.log(`Loaded ${this.products.length} products`);
     } catch (error) {
       console.error('Error loading products:', error);
       this.products = [];
+      throw new Error('ไม่สามารถโหลดข้อมูลสินค้าได้');
     }
   }
   
   /**
-   * Load customers data - Skip for now since API is not ready
+   * Load customers data from real API
    */
-  setupMockCustomers() {
-    // Set up mock customers for demo purposes
-    this.customers = [
-      {
-        id: 'CUST001',
-        name: 'คุณนภา วงศ์ประดิษฐ์',
-        phone: '089-123-4567',
-        email: 'napa.wong@example.com',
-        address: '123 ถนนสุขุมวิท แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110'
-      },
-      {
-        id: 'CUST002', 
-        name: 'คุณสมศักดิ์ ใจดี',
-        phone: '062-987-6543',
-        email: 'somsak.jaidee@example.com',
-        address: '456 ถนนพระราม 4 แขวงคลองตัน เขตคลองตัน กรุงเทพฯ 10110'
-      },
-      {
-        id: 'CUST003',
-        name: 'คุณประภา เจริญพร',
-        phone: '091-234-5678', 
-        email: 'prapa.charoen@example.com',
-        address: '789 ถนนสีลม แขวงสีลม เขตบางรัก กรุงเทพฯ 10500'
-      }
-    ];
-    console.log('Mock customers set up:', this.customers.length, 'customers');
+  async loadCustomers() {
+    try {
+      this.customers = await dataService.getCustomers();
+      console.log(`Loaded ${this.customers.length} customers from API`);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+      this.customers = [];
+      throw new Error('ไม่สามารถโหลดข้อมูลลูกค้าได้');
+    }
   }
   
   /**
@@ -229,7 +227,7 @@ class SaleController {
                 <option value="">-- เลือกลูกค้า --</option>
                 ${this.customers.map(customer => `
                   <option value="${customer.id}" ${selectedCustomer && selectedCustomer.id === customer.id ? 'selected' : ''}>
-                    ${this.escapeHtml(customer.name)} (${this.escapeHtml(customer.phone || 'ไม่ระบุ')})
+                    ${this.escapeHtml(customer.name)} (${this.escapeHtml(customer.tel || 'ไม่ระบุเบอร์')})
                   </option>
                 `).join('')}
               </select>
@@ -239,12 +237,13 @@ class SaleController {
             </div>
             ${this.customers.length === 0 ? `
               <div class="info-note">
-                <small>ระบบลูกค้าอยู่ระหว่างการพัฒนา - ข้อมูลลูกค้าจะถูกจำลองในการสาธิต</small>
+                <i class="fas fa-info-circle"></i>
+                ไม่พบข้อมูลลูกค้าในระบบ กรุณาเพิ่มลูกค้าใหม่ก่อนสร้างการขาย
               </div>
             ` : ''}
           </div>
           
-          <div id="selected-customer-info" class="selected-customer-info" style="display: none;">
+          <div id="selected-customer-info" class="selected-customer-info" style="${selectedCustomer ? 'display: block;' : 'display: none;'}">
             <div class="customer-info-header">
               <h3>ข้อมูลลูกค้าที่เลือก</h3>
               <button type="button" class="btn-link" id="change-customer">เปลี่ยนลูกค้า</button>
@@ -252,19 +251,19 @@ class SaleController {
             <div class="customer-info-grid">
               <div class="info-item">
                 <label>ชื่อ:</label>
-                <span id="customer-name">-</span>
+                <span id="customer-name">${selectedCustomer ? this.escapeHtml(selectedCustomer.name) : '-'}</span>
               </div>
               <div class="info-item">
                 <label>เบอร์โทร:</label>
-                <span id="customer-phone">-</span>
+                <span id="customer-phone">${selectedCustomer ? this.escapeHtml(selectedCustomer.tel || 'ไม่ระบุ') : '-'}</span>
               </div>
               <div class="info-item">
                 <label>อีเมล:</label>
-                <span id="customer-email">-</span>
+                <span id="customer-email">${selectedCustomer ? this.escapeHtml(selectedCustomer.email || 'ไม่ระบุ') : '-'}</span>
               </div>
               <div class="info-item">
                 <label>ที่อยู่:</label>
-                <span id="customer-address">-</span>
+                <span id="customer-address">${selectedCustomer ? this.escapeHtml(selectedCustomer.address || 'ไม่ระบุ') : '-'}</span>
               </div>
             </div>
           </div>
@@ -355,7 +354,7 @@ class SaleController {
           
           <div class="form-group">
             <label for="delivery-address" class="form-label">ที่อยู่จัดส่ง</label>
-            <textarea id="delivery-address" class="form-input" rows="3" placeholder="กรอกที่อยู่จัดส่ง..."></textarea>
+            <textarea id="delivery-address" class="form-input" rows="3" placeholder="กรอกที่อยู่จัดส่ง...">${selectedCustomer ? this.escapeHtml(selectedCustomer.address || '') : ''}</textarea>
           </div>
           
           <div class="form-group">
@@ -441,13 +440,26 @@ class SaleController {
     // Initialize form values
     this.initializeFormDefaults();
     
-    // If selected product provided, validate form immediately
-    if (selectedProduct) {
+    // If selected customer provided, populate info immediately
+    if (selectedCustomer) {
       setTimeout(() => {
         this.validateForm();
         if (window.InfoHubApp) {
           window.InfoHubApp.showNotification(
-            `เพิ่มสินค้า "${selectedProduct.name}" เรียบร้อยแล้ว`, 
+            `เลือกลูกค้า "${selectedCustomer.name}" เรียบร้อยแล้ว`, 
+            'success'
+          );
+        }
+      }, 500);
+    }
+    
+    // If selected product provided, validate form immediately
+    if (selectedProduct && selectedCustomer) {
+      setTimeout(() => {
+        this.validateForm();
+        if (window.InfoHubApp) {
+          window.InfoHubApp.showNotification(
+            `เพิ่มสินค้า "${selectedProduct.name}" สำหรับลูกค้า "${selectedCustomer.name}" เรียบร้อยแล้ว`, 
             'success'
           );
         }
@@ -457,6 +469,245 @@ class SaleController {
     // Add custom CSS for this page
     this.addCustomStyles();
   }
+  
+  /**
+   * Handle customer selection
+   * @param {string} customerId - Selected customer ID
+   */
+  async handleCustomerSelection(customerId) {
+    const customerInfo = document.getElementById('selected-customer-info');
+    
+    if (!customerId || !customerInfo) {
+      if (customerInfo) customerInfo.style.display = 'none';
+      return;
+    }
+    
+    // Find customer in loaded data from API
+    const customer = this.customers.find(c => c.id === customerId);
+    
+    if (customer) {
+      this.populateCustomerInfo(customer);
+    } else {
+      console.warn('Customer not found:', customerId);
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification('ไม่พบข้อมูลลูกค้าที่เลือก', 'error');
+      }
+    }
+  }
+  
+  /**
+   * Populate customer information
+   * @param {Object} customer - Customer data
+   */
+  populateCustomerInfo(customer) {
+    const customerInfo = document.getElementById('selected-customer-info');
+    const nameElement = document.getElementById('customer-name');
+    const phoneElement = document.getElementById('customer-phone');
+    const emailElement = document.getElementById('customer-email');
+    const addressElement = document.getElementById('customer-address');
+    const deliveryAddress = document.getElementById('delivery-address');
+    
+    if (customerInfo && nameElement && phoneElement && emailElement && addressElement) {
+      nameElement.textContent = customer.name || 'ไม่ระบุ';
+      phoneElement.textContent = customer.tel || 'ไม่ระบุ';
+      emailElement.textContent = customer.email || 'ไม่ระบุ';
+      addressElement.textContent = customer.address || 'ไม่ระบุ';
+      
+      customerInfo.style.display = 'block';
+      
+      // Auto-fill delivery address
+      if (deliveryAddress && customer.address) {
+        deliveryAddress.value = customer.address;
+      }
+      
+      this.validateForm();
+    }
+  }
+  
+  /**
+   * Show add customer modal
+   */
+  showAddCustomerModal() {
+    // Create modal directly with the same structure as customer-list.html
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.style.display = 'flex';
+    
+    modal.innerHTML = `
+      <div class="modal">
+        <div class="modal-header">
+          <h2>เพิ่มลูกค้าใหม่</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="new-fname" class="form-label">ชื่อ *</label>
+            <input type="text" id="new-fname" class="form-input" placeholder="กรอกชื่อ" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-name" class="form-label">นามสกุล *</label>
+            <input type="text" id="new-name" class="form-input" placeholder="กรอกนามสกุล" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-tel" class="form-label">เบอร์โทรศัพท์ *</label>
+            <input type="tel" id="new-tel" class="form-input" placeholder="กรอกเบอร์โทรศัพท์" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-email" class="form-label">อีเมล</label>
+            <input type="email" id="new-email" class="form-input" placeholder="กรอกอีเมล">
+          </div>
+          
+          <div class="form-group">
+            <label for="new-address" class="form-label">ที่อยู่</label>
+            <textarea id="new-address" class="form-input" rows="3" placeholder="กรอกที่อยู่"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-status" class="form-label">สถานะ</label>
+            <select id="new-status" class="form-input">
+              <option value="interested">ลูกค้าสนใจสินค้า</option>
+              <option value="confirmed">ยืนยันการสั่งซื้อ</option>
+              <option value="pending_payment">รอชำระเงิน</option>
+              <option value="paid">ชำระเงินแล้ว</option>
+              <option value="delivered">ส่งมอบสินค้า</option>
+              <option value="after_sales">บริการหลังการขาย</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="new-note" class="form-label">หมายเหตุ</label>
+            <textarea id="new-note" class="form-input" rows="3" placeholder="กรอกหมายเหตุเพิ่มเติม"></textarea>
+          </div>
+          
+          <small class="form-note">* ข้อมูลที่จำเป็นต้องกรอก</small>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-add-customer">
+            <i class="fas fa-save"></i> บันทึกข้อมูลลูกค้า
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Setup modal event listeners
+    const closeButtons = modal.querySelectorAll('.modal-close');
+    closeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modal.remove();
+      });
+    });
+    
+    const confirmBtn = modal.querySelector('#confirm-add-customer');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        this.handleAddNewCustomer(modal);
+      });
+    }
+    
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  }
+  
+  /**
+   * Handle adding new customer via API
+   * @param {HTMLElement} modalElement - Modal element
+   */
+  async handleAddNewCustomer(modalElement) {
+    try {
+      const fname = modalElement.querySelector('#new-fname').value.trim();
+      const name = modalElement.querySelector('#new-name').value.trim();
+      const tel = modalElement.querySelector('#new-tel').value.trim();
+      const email = modalElement.querySelector('#new-email').value.trim();
+      const address = modalElement.querySelector('#new-address').value.trim();
+      const status = modalElement.querySelector('#new-status').value;
+      const note = modalElement.querySelector('#new-note').value.trim();
+      
+      // Validate required fields
+      if (!fname || !name || !tel) {
+        alert('กรุณากรอกข้อมูลที่จำเป็น (ชื่อ, นามสกุล, เบอร์โทรศัพท์)');
+        return;
+      }
+      
+      // Show loading in button
+      const confirmButton = modalElement.querySelector('#confirm-add-customer');
+      const originalText = confirmButton.innerHTML;
+      confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
+      confirmButton.disabled = true;
+      
+      // Create customer data for API (same structure as customer-controller.js)
+      const customerData = {
+        fname: fname,
+        name: name,
+        tel: tel,
+        email: email,
+        address: address,
+        status: status,
+        note: note
+      };
+      
+      // Call API to create customer
+      const newCustomer = await dataService.createCustomer(customerData);
+      
+      // Add to local customers list
+      this.customers.push(newCustomer);
+      
+      // Add to select options
+      const customerSelect = document.getElementById('customer-select');
+      if (customerSelect) {
+        const option = document.createElement('option');
+        option.value = newCustomer.id;
+        option.textContent = `${newCustomer.name} (${newCustomer.tel})`;
+        option.selected = true;
+        customerSelect.appendChild(option);
+        
+        // Populate customer info
+        this.populateCustomerInfo(newCustomer);
+      }
+      
+      modalElement.remove();
+      
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(`เพิ่มลูกค้า "${newCustomer.name}" เรียบร้อยแล้ว`, 'success');
+      }
+      
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      
+      // Reset button
+      const confirmButton = modalElement.querySelector('#confirm-add-customer');
+      if (confirmButton) {
+        confirmButton.innerHTML = '<i class="fas fa-save"></i> บันทึกข้อมูลลูกค้า';
+        confirmButton.disabled = false;
+      }
+      
+      // Show error message
+      const errorMessage = error.message || 'ไม่สามารถเพิ่มลูกค้าใหม่ได้ กรุณาลองใหม่อีกครั้ง';
+      
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(errorMessage, 'error');
+      } else {
+        alert(errorMessage);
+      }
+    }
+  }
+
+  // ... (rest of the methods remain the same - createProductRow, setupNewSaleEventListeners, etc.)
   
   /**
    * Create product row HTML
@@ -626,150 +877,6 @@ class SaleController {
     const paymentDate = document.getElementById('payment-date');
     if (paymentDate) {
       paymentDate.value = new Date().toISOString().split('T')[0];
-    }
-  }
-  
-  /**
-   * Handle customer selection
-   * @param {string} customerId - Selected customer ID
-   */
-  async handleCustomerSelection(customerId) {
-    const customerInfo = document.getElementById('selected-customer-info');
-    
-    if (!customerId || !customerInfo) {
-      if (customerInfo) customerInfo.style.display = 'none';
-      return;
-    }
-    
-    // Find customer in loaded data or create mock data
-    let customer = this.customers.find(c => c.id === customerId);
-    
-    if (!customer) {
-      // Create mock customer for demo
-      const select = document.getElementById('customer-select');
-      const selectedOption = select.querySelector(`option[value="${customerId}"]`);
-      if (selectedOption) {
-        const text = selectedOption.textContent;
-        const name = text.split('(')[0].trim();
-        const phone = text.match(/\((.*?)\)/)?.[1] || '';
-        
-        customer = {
-          id: customerId,
-          name: name,
-          phone: phone,
-          email: `${name.toLowerCase().replace(/\s+/g, '.')}@example.com`,
-          address: 'ที่อยู่ลูกค้าตัวอย่าง'
-        };
-      }
-    }
-    
-    if (customer) {
-      this.populateCustomerInfo(customer);
-    }
-  }
-  
-  /**
-   * Populate customer information
-   * @param {Object} customer - Customer data
-   */
-  populateCustomerInfo(customer) {
-    const customerInfo = document.getElementById('selected-customer-info');
-    const nameElement = document.getElementById('customer-name');
-    const phoneElement = document.getElementById('customer-phone');
-    const emailElement = document.getElementById('customer-email');
-    const addressElement = document.getElementById('customer-address');
-    const deliveryAddress = document.getElementById('delivery-address');
-    
-    if (customerInfo && nameElement && phoneElement && emailElement && addressElement) {
-      nameElement.textContent = customer.name || 'ไม่ระบุ';
-      phoneElement.textContent = customer.phone || 'ไม่ระบุ';
-      emailElement.textContent = customer.email || 'ไม่ระบุ';
-      addressElement.textContent = customer.address || 'ไม่ระบุ';
-      
-      customerInfo.style.display = 'block';
-      
-      // Auto-fill delivery address
-      if (deliveryAddress && customer.address) {
-        deliveryAddress.value = customer.address;
-      }
-      
-      this.validateForm();
-    }
-  }
-  
-  /**
-   * Show add customer modal
-   */
-  showAddCustomerModal() {
-    const template = document.getElementById('new-customer-modal-template');
-    if (!template) return;
-    
-    const modalContent = template.content.cloneNode(true);
-    const modalElement = document.createElement('div');
-    modalElement.appendChild(modalContent);
-    
-    document.body.appendChild(modalElement);
-    
-    // Setup modal event listeners
-    const closeButtons = modalElement.querySelectorAll('.modal-close');
-    closeButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
-        modalElement.remove();
-      });
-    });
-    
-    const confirmBtn = modalElement.querySelector('#confirm-add-customer');
-    if (confirmBtn) {
-      confirmBtn.addEventListener('click', () => {
-        this.handleAddNewCustomer(modalElement);
-      });
-    }
-  }
-  
-  /**
-   * Handle adding new customer
-   * @param {HTMLElement} modalElement - Modal element
-   */
-  handleAddNewCustomer(modalElement) {
-    const name = modalElement.querySelector('#new-customer-name').value.trim();
-    const phone = modalElement.querySelector('#new-customer-phone').value.trim();
-    const email = modalElement.querySelector('#new-customer-email').value.trim();
-    const address = modalElement.querySelector('#new-customer-address').value.trim();
-    
-    if (!name || !phone) {
-      alert('กรุณากรอกชื่อและเบอร์โทรศัพท์');
-      return;
-    }
-    
-    // Create new customer
-    const newCustomer = {
-      id: `NEW-${Date.now()}`,
-      name: name,
-      phone: phone,
-      email: email,
-      address: address
-    };
-    
-    // Add to customers list
-    this.customers.push(newCustomer);
-    
-    // Add to select options
-    const customerSelect = document.getElementById('customer-select');
-    if (customerSelect) {
-      const option = document.createElement('option');
-      option.value = newCustomer.id;
-      option.textContent = `${newCustomer.name} (${newCustomer.phone})`;
-      option.selected = true;
-      customerSelect.appendChild(option);
-      
-      // Populate customer info
-      this.populateCustomerInfo(newCustomer);
-    }
-    
-    modalElement.remove();
-    
-    if (window.InfoHubApp) {
-      window.InfoHubApp.showNotification('เพิ่มลูกค้าใหม่เรียบร้อยแล้ว', 'success');
     }
   }
   
@@ -1346,11 +1453,177 @@ class SaleController {
       
       .info-note {
         margin-top: 0.5rem;
-        color: #6b7280;
+        padding: 0.75rem;
+        background: #f0f9ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 0.375rem;
+        color: #1e40af;
+        font-size: 0.875rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
       }
       
       .info-note i {
-        margin-right: 0.25rem;
+        color: #3b82f6;
+      }
+      
+      .customer-info-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      
+      .customer-info-header h3 {
+        color: #374151;
+        font-size: 1rem;
+        margin: 0;
+      }
+      
+      .btn-link {
+        background: none;
+        border: none;
+        color: #3b82f6;
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 0.875rem;
+      }
+      
+      .btn-link:hover {
+        color: #1d4ed8;
+      }
+      
+      .selected-customer-info {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+      }
+      
+      /* Form Styles for Modal */
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+      
+      .form-label {
+        display: block;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+      }
+      
+      .form-input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 0.375rem;
+        font-size: 0.875rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      
+      .form-input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      
+      .form-note {
+        color: #6b7280;
+        font-size: 0.75rem;
+        font-style: italic;
+        margin-top: 0.25rem;
+      }
+      
+      /* Modal Styles */
+      .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      
+      .modal {
+        background: white;
+        border-radius: 0.5rem;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .modal-header h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+      }
+      
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.25rem;
+        color: #6b7280;
+        cursor: pointer;
+        padding: 0.25rem;
+        border-radius: 0.25rem;
+        transition: color 0.2s;
+      }
+      
+      .modal-close:hover {
+        color: #374151;
+      }
+      
+      .modal-body {
+        padding: 1.5rem;
+        flex: 1;
+      }
+      
+      .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        padding: 1.5rem;
+        border-top: 1px solid #e5e7eb;
+      }
+      
+      @media (max-width: 768px) {
+        .customer-selection {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 0.5rem;
+        }
+        
+        .customer-info-grid {
+          grid-template-columns: 1fr;
+          gap: 0.75rem;
+        }
+        
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+        
+        .form-actions-footer {
+          flex-direction: column;
+        }
       }
     `;
     

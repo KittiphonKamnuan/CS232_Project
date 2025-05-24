@@ -1054,19 +1054,23 @@ class CustomerController {
   getStatusClass(status) {
     const statusMap = {
       'interested': 'status-interested',
-      'contacted': 'status-contacted',
-      'negotiating': 'status-negotiating',
-      'confirmed': 'status-confirmed'
+      'confirmed': 'status-confirmed',        // เพิ่ม
+      'pending_payment': 'status-pending',    // เพิ่ม
+      'paid': 'status-paid',                  // เพิ่ม
+      'delivered': 'status-delivered',        // เพิ่ม
+      'after_sales': 'status-after-sales',    // เพิ่ม
     };
     return statusMap[status] || '';
   }
   
   getStatusText(status) {
     const statusMap = {
-      'interested': 'สนใจ',
-      'contacted': 'ติดต่อแล้ว',
-      'negotiating': 'กำลังเจรจา',
-      'confirmed': 'ยืนยันแล้ว'
+      'interested': 'ลูกค้าสนใจสินค้า',
+      'confirmed': 'ยืนยันการสั่งซื้อ',
+      'pending_payment': 'รอชำระเงิน',
+      'paid': 'ชำระเงินแล้ว',
+      'delivered': 'ส่งมอบสินค้า',
+      'after_sales': 'บริการหลังการขาย',
     };
     return statusMap[status] || status;
   }
