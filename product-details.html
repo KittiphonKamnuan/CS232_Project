@@ -10,39 +10,42 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body class="bg-gray-100">
+  <!-- App Preloader -->
+  <div id="app-preloader" class="app-preloader">
+    <div class="spinner-container">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>กำลังโหลด InfoHub 360...</p>
+    </div>
+  </div>
+
   <div class="flex flex-col h-screen">
     <!-- Top Navigation -->
     <nav class="navbar">
       <div class="container">
         <div class="logo">
-          <i class="fas fa-cube"></i>
-          <span>InfoHub 360</span>
+          <a href="index.html">
+            <i class="fas fa-cube"></i>
+            <span>InfoHub 360</span>
+          </a>
         </div>
         <div class="user-section">
-          <span class="user-greeting">สวัสดี, คุณสมชาย (พนักงานขาย)</span>
+          <span class="user-greeting">สวัสดี, ผู้ใช้งาน (พนักงานขาย)</span>
           <div class="notifications">
             <i class="fas fa-bell"></i>
-            <span class="notification-count">3</span>
+            <span class="notification-count">0</span>
             <div class="notification-dropdown">
               <div class="notification-header">
                 <p>การแจ้งเตือน</p>
               </div>
-              <div class="notification-item">
-                <p class="notification-title">ตรวจสอบลูกค้า: คุณนภา</p>
-                <p class="notification-desc">ส่งใบเสนอราคาแล้ว 2 วัน</p>
-              </div>
-              <div class="notification-item">
-                <p class="notification-title">สต๊อกใกล้หมด: TV Samsung QN90C</p>
-                <p class="notification-desc">เหลือเพียง 2 เครื่อง</p>
-              </div>
-              <div class="notification-item">
-                <p class="notification-title">โปรโมชันใหม่: เครื่องใช้ไฟฟ้า</p>
-                <p class="notification-desc">เริ่ม 15 เม.ย. - 30 เม.ย. 2568</p>
+              <div class="notification-empty">
+                <p>ไม่มีการแจ้งเตือนใหม่</p>
               </div>
             </div>
           </div>
           <div class="user-avatar">
-            <span>ส</span>
+            <a href="profile.html">
+              <span>U</span>
+            </a>
           </div>
         </div>
       </div>
@@ -53,21 +56,17 @@
       <!-- Sidebar -->
       <div class="sidebar">
         <div class="sidebar-menu">
-          <a href="index.html" class="menu-item active" data-tab="search">
+          <a href="index.html" class="menu-item active">
             <i class="fas fa-search"></i>
             <span>ค้นหาสินค้า</span>
           </a>
-          <a href="customer-list.html" class="menu-item" data-tab="customers">
+          <a href="customer-list.html" class="menu-item">
             <i class="fas fa-users"></i>
             <span>ลูกค้าของฉัน</span>
           </a>
-          <a href="sales-report.html" class="menu-item" data-tab="sales">
+          <a href="sales-report.html" class="menu-item">
             <i class="fas fa-chart-line"></i>
             <span>ติดตามการขาย</span>
-          </a>
-          <a href="document-viewer.html" class="menu-item" data-tab="documents">
-            <i class="fas fa-file-pdf"></i>
-            <span>เอกสาร</span>
           </a>
         </div>
         <div class="sidebar-footer">
@@ -75,7 +74,7 @@
             <i class="fas fa-cog"></i>
             <span>ตั้งค่า</span>
           </a>
-          <a href="login.html" class="menu-item">
+          <a href="login.html" class="menu-item logout-link">
             <i class="fas fa-sign-out-alt"></i>
             <span>ออกจากระบบ</span>
           </a>
@@ -92,24 +91,223 @@
         </div>
         
         <!-- Loading Indicator -->
-        <div id="loading-indicator" class="loading-overlay">
+        <div id="loading-indicator" class="loading-overlay" style="display: none;">
           <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
           </div>
+          <p>กำลังโหลดข้อมูลสินค้า...</p>
         </div>
         
         <!-- Error Message -->
-        <div id="error-message" class="error-message" style="display: none;"></div>
+        <div id="error-message" class="error-message" style="display: none;">
+          <div class="error-content">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="error-text">
+              <h3>เกิดข้อผิดพลาด</h3>
+              <p>ไม่สามารถโหลดข้อมูลสินค้าได้ กรุณาลองใหม่อีกครั้ง</p>
+            </div>
+            <button class="btn btn-primary retry-btn" id="retry-button">
+              <i class="fas fa-redo"></i> ลองใหม่
+            </button>
+          </div>
+        </div>
         
         <!-- Product Details Container -->
         <div id="product-details" class="product-details-container">
-          <!-- จะเติมข้อมูลด้วย JavaScript (product-controller.js) -->
+          <!-- Content will be loaded by JavaScript -->
         </div>
       </div>
     </div>
   </div>
   
-  <!-- Load Scripts -->
+  <!-- Share Modal Template -->
+  <template id="share-modal-template">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>ส่งข้อมูลให้ลูกค้า</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="document-preview">
+            <div class="preview-header">
+              <div class="preview-thumbnail">
+                <i class="fas fa-image"></i>
+              </div>
+              <div class="preview-info">
+                <h3 class="preview-title">ชื่อสินค้า</h3>
+                <p class="preview-code">รหัสสินค้า: </p>
+                <p class="preview-price">฿0</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <h3 class="form-label">เลือกข้อมูลที่ต้องการส่ง</h3>
+            
+            <div class="form-grid">
+              <!-- Document Selection -->
+              <div class="form-section">
+                <p class="section-label">เอกสาร</p>
+                <div class="checkbox-list">
+                  <div class="checkbox-group">
+                    <input type="checkbox" id="modal-spec" class="checkbox-input" checked>
+                    <label for="modal-spec">สเปคสินค้า</label>
+                  </div>
+                  <div class="checkbox-group">
+                    <input type="checkbox" id="modal-manual" class="checkbox-input">
+                    <label for="modal-manual">คู่มือการใช้งาน</label>
+                  </div>
+                  <div class="checkbox-group">
+                    <input type="checkbox" id="modal-compare" class="checkbox-input" checked>
+                    <label for="modal-compare">เปรียบเทียบรุ่น</label>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Price and Availability -->
+              <div class="form-section">
+                <p class="section-label">ข้อมูลราคาและสต๊อก</p>
+                <div class="checkbox-list">
+                  <div class="checkbox-group">
+                    <input type="checkbox" id="modal-price" class="checkbox-input" checked>
+                    <label for="modal-price">ราคา</label>
+                  </div>
+                  <div class="checkbox-group">
+                    <input type="checkbox" id="modal-stock" class="checkbox-input" checked>
+                    <label for="modal-stock">สถานะสต๊อกสินค้า</label>
+                  </div>
+                  <div class="checkbox-group">
+                    <input type="checkbox" id="modal-delivery" class="checkbox-input">
+                    <label for="modal-delivery">ข้อมูลการจัดส่ง</label>
+                  </div>
+                  <div class="checkbox-group">
+                    <input type="checkbox" id="modal-warranty" class="checkbox-input">
+                    <label for="modal-warranty">รายละเอียดการรับประกัน</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Custom Message -->
+          <div class="form-group">
+            <label class="form-label" for="custom-message">ข้อความเพิ่มเติม</label>
+            <textarea id="custom-message" class="form-input" placeholder="เพิ่มข้อความส่วนตัวถึงลูกค้า..." rows="3"></textarea>
+          </div>
+          
+          <!-- Send To -->
+          <div class="form-group">
+            <p class="form-label">ส่งถึงลูกค้า</p>
+            <div class="customer-select">
+              <div class="input-container">
+                <input type="text" id="customer-contact" class="form-input" placeholder="กรอกอีเมลหรือเบอร์โทรศัพท์">
+              </div>
+              <small class="form-note">* ระบบลูกค้าอยู่ระหว่างการพัฒนา</small>
+            </div>
+          </div>
+          
+          <!-- Send Methods -->
+          <div class="form-group">
+            <p class="form-label">ช่องทางการส่ง</p>
+            <div class="share-methods">
+              <button type="button" class="share-method" data-method="line" disabled>
+                <i class="fab fa-line"></i> LINE
+              </button>
+              <button type="button" class="share-method" data-method="email" disabled>
+                <i class="fas fa-envelope"></i> อีเมล
+              </button>
+              <button type="button" class="share-method" data-method="sms" disabled>
+                <i class="fas fa-comment-alt"></i> SMS
+              </button>
+              <button type="button" class="share-method" data-method="qr" disabled>
+                <i class="fas fa-qrcode"></i> QR Code
+              </button>
+            </div>
+            <small class="form-note">* ระบบส่งข้อมูลอยู่ระหว่างการพัฒนา</small>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="modal-send-button">
+            แสดงตัวอย่าง
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Sale Confirmation Modal Template -->
+  <template id="sale-confirmation-modal-template">
+    <div class="modal-backdrop">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>สร้างการขายใหม่</h2>
+          <button class="modal-close" type="button">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <div class="confirmation-content">
+            <div class="confirmation-icon">
+              <i class="fas fa-shopping-cart"></i>
+            </div>
+            <h3>เริ่มสร้างการขายใหม่</h3>
+            <p>คุณต้องการสร้างการขายใหม่สำหรับสินค้านี้หรือไม่?</p>
+            
+            <div class="product-summary">
+              <div class="summary-image">
+                <i class="fas fa-image"></i>
+              </div>
+              <div class="summary-info">
+                <h4 class="summary-title">ชื่อสินค้า</h4>
+                <p class="summary-code">รหัสสินค้า: </p>
+                <p class="summary-price">฿0</p>
+              </div>
+            </div>
+            
+            <div class="options-list">
+              <div class="option-item">
+                <input type="radio" id="create-with-product" name="sale-option" value="with-product" checked>
+                <label for="create-with-product">
+                  <strong>สร้างการขายพร้อมสินค้านี้</strong>
+                  <small>เพิ่มสินค้านี้ลงในการขายใหม่โดยอัตโนมัติ</small>
+                </label>
+              </div>
+              <div class="option-item">
+                <input type="radio" id="create-empty" name="sale-option" value="empty">
+                <label for="create-empty">
+                  <strong>สร้างการขายว่าง</strong>
+                  <small>สร้างการขายใหม่โดยไม่เพิ่มสินค้า</small>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline modal-close">
+            ยกเลิก
+          </button>
+          <button type="button" class="btn btn-primary" id="confirm-create-sale">
+            <i class="fas fa-check"></i> สร้างการขาย
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- JavaScript Files -->
+  <script type="module" src="js/services/data-service.js"></script>
+  <script src="js/scripts.js"></script>
   <script type="module" src="js/controllers/product-controller.js"></script>
+  <script type="module" src="js/auth-guard.js" defer></script>
 </body>
 </html>

@@ -15,59 +15,50 @@
     <nav class="navbar">
       <div class="container">
         <div class="logo">
-          <i class="fas fa-cube"></i>
-          <span>InfoHub 360</span>
+          <a href="index.html">
+            <i class="fas fa-cube"></i>
+            <span>InfoHub 360</span>
+          </a>
         </div>
         <div class="user-section">
-          <span class="user-greeting">สวัสดี, คุณสมชาย (พนักงานขาย)</span>
+          <span class="user-greeting">สวัสดี, ผู้ใช้งาน (พนักงานขาย)</span>
           <div class="notifications">
             <i class="fas fa-bell"></i>
-            <span class="notification-count">3</span>
+            <span class="notification-count">0</span>
             <div class="notification-dropdown">
               <div class="notification-header">
                 <p>การแจ้งเตือน</p>
               </div>
-              <div class="notification-item">
-                <p class="notification-title">ตรวจสอบลูกค้า: คุณนภา</p>
-                <p class="notification-desc">ส่งใบเสนอราคาแล้ว 2 วัน</p>
-              </div>
-              <div class="notification-item">
-                <p class="notification-title">สต๊อกใกล้หมด: TV Samsung QN90C</p>
-                <p class="notification-desc">เหลือเพียง 2 เครื่อง</p>
-              </div>
-              <div class="notification-item">
-                <p class="notification-title">โปรโมชันใหม่: เครื่องใช้ไฟฟ้า</p>
-                <p class="notification-desc">เริ่ม 15 เม.ย. - 30 เม.ย. 2568</p>
+              <div class="notification-empty">
+                <p>ไม่มีการแจ้งเตือนใหม่</p>
               </div>
             </div>
           </div>
           <div class="user-avatar">
-            <span>ส</span>
+            <a href="profile.html">
+              <span>U</span>
+            </a>
           </div>
         </div>
       </div>
     </nav>
-    
+
     <!-- Main Content -->
     <div class="main-content">
       <!-- Sidebar -->
       <div class="sidebar">
         <div class="sidebar-menu">
-          <a href="index.html" class="menu-item" data-tab="search">
+          <a href="index.html" class="menu-item">
             <i class="fas fa-search"></i>
             <span>ค้นหาสินค้า</span>
           </a>
-          <a href="customer-list.html" class="menu-item active" data-tab="customers">
+          <a href="customer-list.html" class="menu-item active">
             <i class="fas fa-users"></i>
             <span>ลูกค้าของฉัน</span>
           </a>
-          <a href="sales-report.html" class="menu-item" data-tab="sales">
+          <a href="sales-report.html" class="menu-item">
             <i class="fas fa-chart-line"></i>
             <span>ติดตามการขาย</span>
-          </a>
-          <a href="document-viewer.html" class="menu-item" data-tab="documents">
-            <i class="fas fa-file-pdf"></i>
-            <span>เอกสาร</span>
           </a>
         </div>
         <div class="sidebar-footer">
@@ -75,19 +66,19 @@
             <i class="fas fa-cog"></i>
             <span>ตั้งค่า</span>
           </a>
-          <a href="login.html" class="menu-item">
+          <a href="login.html" class="menu-item logout-link">
             <i class="fas fa-sign-out-alt"></i>
             <span>ออกจากระบบ</span>
           </a>
         </div>
       </div>
-      
+
       <!-- Content Area -->
       <div class="content">
         <div class="section-header">
           <h1>ลูกค้าของฉัน</h1>
           <p>จัดการและติดตามข้อมูลลูกค้า</p>
-          
+
           <div class="search-form" id="search-form">
             <div class="search-input">
               <input type="text" placeholder="ค้นหาลูกค้า..." id="keyword">
@@ -120,26 +111,37 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Loading Indicator -->
-        <div id="loading-indicator" class="loading-overlay">
+        <div id="loading-indicator" class="loading-overlay" style="display: none;">
           <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
           </div>
         </div>
-        
+
         <!-- Error Message -->
-        <div id="error-message" class="error-message" style="display: none;"></div>
-        
+        <div id="error-message" class="error-message" style="display: none;">
+          <div class="error-content">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="error-text">
+              <h3>เกิดข้อผิดพลาด</h3>
+              <p>ไม่สามารถโหลดข้อมูลลูกค้าได้ กรุณาลองใหม่อีกครั้ง</p>
+            </div>
+            <button class="btn btn-primary retry-btn" id="retry-button">
+              <i class="fas fa-redo"></i> ลองใหม่
+            </button>
+          </div>
+        </div>
+
         <div class="card">
           <h2>รายชื่อลูกค้า</h2>
-          
+
           <div class="table-container">
             <div id="customer-list">
               <!-- จะเติมข้อมูลด้วย JavaScript (customer-controller.js) -->
             </div>
           </div>
-          
+
           <div id="pagination-container">
             <!-- จะเติมข้อมูลด้วย JavaScript (customer-controller.js) -->
           </div>
@@ -147,8 +149,9 @@
       </div>
     </div>
   </div>
-  
+
   <!-- Load Scripts -->
   <script type="module" src="js/controllers/customer-controller.js"></script>
+  <script type="module" src="js/auth-guard.js" defer></script>
 </body>
 </html>

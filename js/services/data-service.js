@@ -6,8 +6,6 @@
  * อัปเดต: ใช้ข้อมูลจริงจาก API เท่านั้น
  */
 
-import { AWS_REGION } from '../config/aws-config.js';
-
 // กำหนด API Endpoints
 const API_ENDPOINTS = {
   PRODUCTS: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetAllProducts',
@@ -65,7 +63,39 @@ class DataService {
    * @returns {Promise<Array>} - รายการสินค้าที่ค้นพบ
    */
   async searchProducts(searchParams) {
-    return this.getProducts(searchParams);
+    try {
+      const allProducts = await this.getProducts();
+      
+      if (!searchParams || Object.keys(searchParams).length === 0) {
+        return allProducts;
+      }
+      
+      let filteredProducts = allProducts;
+      
+      // กรองตาม search keyword
+      if (searchParams.search && searchParams.search.trim()) {
+        const searchTerm = searchParams.search.trim().toLowerCase();
+        filteredProducts = filteredProducts.filter(product => 
+          product.name.toLowerCase().includes(searchTerm) ||
+          product.id.toLowerCase().includes(searchTerm) ||
+          product.brand.toLowerCase().includes(searchTerm) ||
+          (product.description && product.description.toLowerCase().includes(searchTerm))
+        );
+      }
+      
+      // กรองตาม category
+      if (searchParams.category && searchParams.category.trim()) {
+        const categoryTerm = searchParams.category.trim().toLowerCase();
+        filteredProducts = filteredProducts.filter(product => 
+          product.category && product.category.toLowerCase().includes(categoryTerm)
+        );
+      }
+      
+      return filteredProducts;
+    } catch (err) {
+      console.error('Error searching products:', err);
+      throw new Error('ไม่สามารถค้นหาสินค้าได้ กรุณาลองใหม่อีกครั้ง');
+    }
   }
   
   /**
@@ -75,6 +105,9 @@ class DataService {
    */
   async getProductById(productId) {
     try {
+      console.log('Getting product by ID:', productId);
+      
+      // เรียก API เพื่อดึงข้อมูลสินค้าตาม ID
       const url = `${API_ENDPOINTS.PRODUCTS}?product_id=${encodeURIComponent(productId)}`;
       const response = await fetch(url);
       
@@ -83,14 +116,51 @@ class DataService {
       }
       
       const data = await response.json();
+      console.log('API Response for product ID:', productId, data);
       
-      if (!data) {
-        throw new Error('ไม่พบข้อมูลสินค้า');
+      // ถ้า API ส่งข้อมูลเป็น array ให้หาสินค้าที่ตรงกับ ID
+      if (Array.isArray(data)) {
+        const product = data.find(p => 
+          (p.product_id && p.product_id === productId) || 
+          (p.id && p.id === productId)
+        );
+        if (product) {
+          console.log('Product found in array:', product);
+          return this._formatProduct(product);
+        } else {
+          // ถ้าไม่เจอใน array ให้หาจากสินค้าทั้งหมด
+          const allProducts = await this.getProducts();
+          const foundProduct = allProducts.find(p => p.id === productId);
+          if (foundProduct) {
+            console.log('Product found in all products:', foundProduct);
+            return foundProduct;
+          }
+        }
+      } else if (data && typeof data === 'object') {
+        // ถ้า API ส่งข้อมูลเป็น object เดียว
+        const productIdFromData = data.product_id || data.id;
+        if (productIdFromData === productId) {
+          console.log('Product found as single object:', data);
+          return this._formatProduct(data);
+        }
       }
       
-      return this._formatProduct(data);
+      throw new Error('ไม่พบข้อมูลสินค้า');
     } catch (err) {
       console.error('Error loading product by ID:', err);
+      // ถ้าเกิดข้อผิดพลาด ลองหาจากสินค้าทั้งหมด
+      try {
+        console.log('Fallback: searching in all products');
+        const allProducts = await this.getProducts();
+        const product = allProducts.find(p => p.id === productId);
+        if (product) {
+          console.log('Product found in fallback search:', product);
+          return product;
+        }
+      } catch (fallbackError) {
+        console.error('Fallback search also failed:', fallbackError);
+      }
+      
       throw new Error('ไม่สามารถโหลดข้อมูลสินค้าได้ กรุณาตรวจสอบรหัสสินค้าและลองใหม่อีกครั้ง');
     }
   }
@@ -296,6 +366,12 @@ class DataService {
   }
   
   /**
+   * ===================================
+   * HELPER METHODS
+   * ===================================
+   */
+  
+  /**
    * จัดรูปแบบข้อมูลสินค้าจาก API
    * @private
    * @param {Object} apiProduct - ข้อมูลสินค้าจาก API
@@ -315,6 +391,19 @@ class DataService {
     const imageUrl = apiProduct.imgurl || apiProduct.imageurl || apiProduct.image;
     const images = imageUrl ? [imageUrl] : [];
     
+    // จัดการสเปค
+    let specifications = null;
+    if (apiProduct.specifications) {
+      try {
+        specifications = typeof apiProduct.specifications === 'string' 
+          ? JSON.parse(apiProduct.specifications) 
+          : apiProduct.specifications;
+      } catch (e) {
+        console.warn('Failed to parse specifications:', e);
+        specifications = null;
+      }
+    }
+    
     return {
       id: productId,
       name: productName,
@@ -327,11 +416,14 @@ class DataService {
       discount: discount,
       stock: stock,
       images: images,
+      specifications: specifications,
       
       // ข้อมูลการจัดส่ง
       delivery: {
         status: stock > 0 ? "available" : "unavailable",
-        estimatedDays: stock > 0 ? "1-3 วัน" : "สินค้าหมด"
+        estimatedDays: stock > 0 ? "1-3 วัน" : "สินค้าหมด",
+        method: "บริการส่งถึงบ้าน",
+        freeShipping: price >= 1000 // ส่งฟรีเมื่อซื้อเกิน 1000 บาท
       },
       
       // เอกสารที่เกี่ยวข้อง
@@ -342,7 +434,13 @@ class DataService {
       },
       
       // การรับประกัน
-      warranty: apiProduct.warranty || "รับประกันตามที่ผู้ผลิตกำหนด"
+      warranty: apiProduct.warranty || "รับประกันตามที่ผู้ผลิตกำหนด",
+      
+      // ข้อมูลเพิ่มเติม
+      features: apiProduct.features || [],
+      tags: apiProduct.tags || [],
+      rating: parseFloat(apiProduct.rating) || 0,
+      reviewCount: parseInt(apiProduct.reviewCount) || 0
     };
   }
 
@@ -425,6 +523,30 @@ class DataService {
       console.error('Error getting current user:', error);
       throw new Error('ไม่สามารถดึงข้อมูลผู้ใช้ได้ ระบบอยู่ระหว่างการพัฒนา');
     }
+  }
+  
+  /**
+   * ตรวจสอบการเชื่อมต่อ API
+   * @returns {Promise<boolean>} - สถานะการเชื่อมต่อ
+   */
+  async checkConnection() {
+    try {
+      const response = await fetch(API_ENDPOINTS.PRODUCTS, {
+        method: 'HEAD',
+        timeout: 5000
+      });
+      return response.ok;
+    } catch (error) {
+      console.error('Connection check failed:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Clear cache (สำหรับอนาคต)
+   */
+  clearCache() {
+    console.log('Cache cleared - feature not implemented yet');
   }
 }
 

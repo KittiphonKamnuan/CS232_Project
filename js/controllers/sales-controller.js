@@ -5,7 +5,6 @@
  */
 
 import dataService from '../services/data-service.js';
-import documentService from '../services/document-service.js';
 
 class SalesController {
   constructor() {
