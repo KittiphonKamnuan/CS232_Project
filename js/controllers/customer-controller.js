@@ -1082,6 +1082,389 @@ async handleUpdateCustomer(modalElement, customer) {
   }
 }
 
+// เพิ่มฟังก์ชันที่ขาดหายไปในไฟล์ customer-controller.js
+
+/**
+ * Get priority CSS class
+ */
+getPriorityClass(priority) {
+  const priorityMap = {
+    'low': 'priority-low',
+    'normal': 'priority-normal',
+    'high': 'priority-high'
+  };
+  return priorityMap[priority] || 'priority-normal';
+}
+
+/**
+ * Get priority text in Thai
+ */
+getPriorityText(priority) {
+  const priorityMap = {
+    'low': 'ความสำคัญต่ำ',
+    'normal': 'ความสำคัญปกติ', 
+    'high': 'ความสำคัญสูง'
+  };
+  return priorityMap[priority] || 'ปกติ';
+}
+
+/**
+ * Get contact method text in Thai
+ */
+getContactMethodText(method) {
+  const methodMap = {
+    'phone': 'โทรศัพท์',
+    'email': 'อีเมล',
+    'line': 'LINE',
+    'facebook': 'Facebook',
+    'website': 'เว็บไซต์',
+    'walk_in': 'มาที่ร้าน',
+    'referral': 'แนะนำ'
+  };
+  return methodMap[method] || 'โทรศัพท์';
+}
+
+/**
+ * Add custom styles for customer details - Enhanced version
+ */
+addCustomerDetailsStyles() {
+  const styleId = 'customer-details-styles';
+  if (document.getElementById(styleId)) return;
+  
+  const style = document.createElement('style');
+  style.id = styleId;
+  style.textContent = `
+    .customer-details-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    
+    .customer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .customer-title {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+    }
+    
+    .customer-code {
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .code-value {
+      font-family: monospace;
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    .customer-status {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .status-badge, .priority-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    /* Status Styles */
+    .status-interested { background: #dbeafe; color: #1e40af; }
+    .status-contacted { background: #fef3c7; color: #92400e; }
+    .status-negotiating { background: #fed7d7; color: #c53030; }
+    .status-confirmed { background: #d1fae5; color: #065f46; }
+    .status-pending { background: #fde68a; color: #92400e; }
+    .status-paid { background: #d1fae5; color: #065f46; }
+    .status-delivered { background: #dbeafe; color: #1e40af; }
+    .status-after-sales { background: #e0e7ff; color: #3730a3; }
+    
+    /* Priority Styles */
+    .priority-low { background: #f3f4f6; color: #6b7280; }
+    .priority-normal { background: #dbeafe; color: #1e40af; }
+    .priority-high { background: #fecaca; color: #dc2626; }
+    
+    .customer-actions-header {
+      display: flex;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+    
+    .btn-large {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    .customer-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    .customer-info-card {
+      background: white;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1rem;
+    }
+    
+    .card-title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .card-title i {
+      color: #3b82f6;
+    }
+    
+    .contact-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .contact-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .contact-label {
+      color: #6b7280;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .contact-value {
+      font-weight: 600;
+      color: #374151;
+    }
+    
+    .contact-value a {
+      color: #3b82f6;
+      text-decoration: none;
+    }
+    
+    .contact-value a:hover {
+      text-decoration: underline;
+    }
+    
+    .customer-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    
+    .stat-item {
+      text-align: center;
+      padding: 1rem;
+      background: #f9fafb;
+      border-radius: 0.5rem;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+      font-size: 0.875rem;
+      color: #6b7280;
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-description {
+      font-size: 0.75rem;
+      color: #9ca3af;
+    }
+    
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    
+    .timeline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    
+    .timeline-icon {
+      width: 40px;
+      height: 40px;
+      background: #3b82f6;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    
+    .timeline-content {
+      flex: 1;
+    }
+    
+    .timeline-title {
+      font-weight: 600;
+      color: #1f2937;
+      margin-bottom: 0.25rem;
+    }
+    
+    .timeline-description {
+      color: #6b7280;
+      font-size: 0.875rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .timeline-date {
+      color: #9ca3af;
+      font-size: 0.75rem;
+    }
+    
+    .customer-notes {
+      background: #f9fafb;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      border-left: 4px solid #3b82f6;
+    }
+    
+    .customer-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    
+    .tag {
+      background: #e5e7eb;
+      color: #374151;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    .customer-actions-mobile {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: white;
+      padding: 1rem;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      gap: 0.5rem;
+    }
+    
+    .btn-mobile {
+      flex: 1;
+      padding: 0.75rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .customer-header {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+      
+      .customer-actions-header {
+        display: none;
+      }
+      
+      .customer-actions-mobile {
+        display: flex;
+      }
+      
+      .customer-content {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .customer-title {
+        font-size: 1.5rem;
+      }
+      
+      .customer-stats {
+        grid-template-columns: 1fr;
+      }
+      
+      .customer-details-container {
+        padding: 0.5rem;
+        margin-bottom: 80px;
+      }
+      
+      .contact-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+      }
+    }
+    
+    @media (max-width: 640px) {
+      .customer-stats {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+      }
+      
+      .stat-item {
+        padding: 0.75rem;
+      }
+      
+      .timeline-item {
+        gap: 0.75rem;
+      }
+      
+      .timeline-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 0.875rem;
+      }
+    }
+  `;
+  
+  document.head.appendChild(style);
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+escapeHtml(text) {
+  if (typeof text !== 'string') return String(text);
+  
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 /**
  * Show edit customer modal with improved form handling
  */
