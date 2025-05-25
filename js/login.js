@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // ข้อมูล Cognito
   const poolData = {
-    UserPoolId: 'us-east-1_FhgCeg2YB',
-    ClientId: '5eeajv1i9r7e64qv0gd7h1u0bi'
+    UserPoolId: 'us-east-1_SkQQTwajD',
+    ClientId: 'enel8ba2e0n2jhschr9eoiac7'
   };  
   
   // สร้าง Cognito User Pool
