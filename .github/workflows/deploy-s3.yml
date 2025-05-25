@@ -1,4 +1,4 @@
-name: 🚀 Deploy to S3
+name: 🚀 Deploy to S3 (Debug)
 
 on:
   push:
@@ -27,9 +27,11 @@ jobs:
         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
         unzip awscliv2.zip
         sudo ./aws/install
+        aws --version
         
     - name: 🔑 Configure AWS Credentials
       run: |
+        echo "Setting up AWS credentials..."
         mkdir -p ~/.aws
         echo "[default]" > ~/.aws/credentials
         echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
@@ -37,17 +39,50 @@ jobs:
         echo "aws_session_token=${{ secrets.AWS_SESSION_TOKEN }}" >> ~/.aws/credentials
         echo "[default]" > ~/.aws/config
         echo "region=${{ env.AWS_REGION }}" >> ~/.aws/config
+        echo "AWS config files created successfully"
+        
+    - name: 🔍 Debug - Check Secrets
+      run: |
+        echo "Checking if secrets are loaded..."
+        echo "AWS_ACCESS_KEY_ID length: ${#AWS_ACCESS_KEY_ID}"
+        echo "AWS_SECRET_ACCESS_KEY length: ${#AWS_SECRET_ACCESS_KEY}" 
+        echo "AWS_SESSION_TOKEN length: ${#AWS_SESSION_TOKEN}"
+        echo "S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}"
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
         
     - name: 🔍 Test AWS Connection
       run: |
         echo "Testing AWS connection..."
-        aws sts get-caller-identity
-        echo "Checking bucket access..."
-        aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/
+        echo "Caller identity:"
+        aws sts get-caller-identity || echo "❌ Failed to get caller identity"
+        
+        echo "List all S3 buckets:"
+        aws s3 ls || echo "❌ Failed to list S3 buckets"
+        
+        echo "Check specific bucket:"
+        aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/ || echo "❌ Failed to access bucket ${{ secrets.S3_BUCKET_NAME }}"
         
     - name: 🚀 Deploy to S3
       run: |
         echo "Deploying files to S3..."
+        echo "Files to deploy:"
+        find . -name "*.html" -o -name "*.css" -o -name "*.js" | head -10
+        
+        echo "Running s3 sync..."
+        aws s3 sync . s3://${{ secrets.S3_BUCKET_NAME }}/ \
+          --delete \
+          --exclude ".git/*" \
+          --exclude ".github/*" \
+          --exclude "backend/*" \
+          --exclude "node_modules/*" \
+          --exclude "*.md" \
+          --exclude "package*.json" \
+          --dryrun || echo "❌ Dry run failed"
+          
+        echo "Actual deployment:"
         aws s3 sync . s3://${{ secrets.S3_BUCKET_NAME }}/ \
           --delete \
           --exclude ".git/*" \
@@ -62,15 +97,19 @@ jobs:
         echo "Setting MIME types..."
         aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/ s3://${{ secrets.S3_BUCKET_NAME }}/ \
           --recursive --exclude "*" --include "*.html" \
-          --content-type "text/html" --metadata-directive REPLACE
+          --content-type "text/html" --metadata-directive REPLACE || echo "⚠️ HTML content-type failed"
+          
         aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/ s3://${{ secrets.S3_BUCKET_NAME }}/ \
           --recursive --exclude "*" --include "*.css" \
-          --content-type "text/css" --metadata-directive REPLACE
+          --content-type "text/css" --metadata-directive REPLACE || echo "⚠️ CSS content-type failed"
+          
         aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/ s3://${{ secrets.S3_BUCKET_NAME }}/ \
           --recursive --exclude "*" --include "*.js" \
-          --content-type "application/javascript" --metadata-directive REPLACE
+          --content-type "application/javascript" --metadata-directive REPLACE || echo "⚠️ JS content-type failed"
           
     - name: ✅ Success Message
       run: |
         echo "🎉 Deployment completed!"
         echo "🌐 Website: http://${{ secrets.S3_BUCKET_NAME }}.s3-website-${{ env.AWS_REGION }}.amazonaws.com"
+        echo "Final bucket contents:"
+        aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/ --recursive
