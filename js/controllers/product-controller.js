@@ -20,10 +20,7 @@ class CompleteProductController {
    // Status Options
    this.statusOptions = [
      { value: 'สนใจ', label: 'สถานะ 1: ลูกค้าสนใจสินค้า' },
-     { value: 'รอชำระเงิน', label: 'สถานะ 2: รอชำระเงิน' },
-     { value: 'ชำระเงินแล้ว', label: 'สถานะ 3: ชำระเงินแล้ว' },
-     { value: 'ส่งมอบสินค้า', label: 'สถานะ 4: ส่งมอบสินค้า' },
-     { value: 'บริการหลังการขาย', label: 'สถานะ 5: บริการหลังการขาย' }
+     { value: 'รอชำระเงิน', label: 'สถานะ 2: รอชำระเงิน' }
    ];
    
    // DOM Elements
@@ -1608,12 +1605,14 @@ handleClearAll(modal) {
 /**
  * Handle save all statuses
  */
+/**
+   * Handle save all statuses in the new format
+   */
 async handleSaveAll(modal) {
   try {
     const saveBtn = modal.querySelector('.save-all-btn');
     const originalContent = saveBtn.innerHTML;
 
-    // Validate customer selection
     const customerSelect = modal.querySelector('#customer-select');
     if (!customerSelect.value) {
       if (window.InfoHubApp) {
@@ -1623,58 +1622,38 @@ async handleSaveAll(modal) {
       return;
     }
 
-    // Show loading
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
     saveBtn.disabled = true;
 
-    // Get customer data
     const selectedCustomer = JSON.parse(customerSelect.selectedOptions[0].getAttribute('data-customer'));
+    const createdBy = window.InfoHubApp?.getCurrentUserId?.() || 'SYSTEM';
+    const createdAt = new Date().toISOString();
 
-    // Prepare sales data
-    const salesData = Array.from(this.selectedProducts.values()).map(product => ({
-      state_id: `S${Date.now()}_${product.id}`,
-      customer: {
-        note: selectedCustomer.note || "",
-        customer_fname: selectedCustomer.firstName || "",
-        customer_id: selectedCustomer.id,
-        customer_tel: selectedCustomer.tel || "",
-        customer_email: selectedCustomer.email || "",
-        customer_lname: selectedCustomer.lastName || "",
-        customer_address: selectedCustomer.address || ""
-      },
-      Product: {
-        model: product.model || "",
-        manualurl: product.documents?.manual || "",
-        category_name: product.category || "",
-        compareurl: product.documents?.compare || "",
-        brand: product.brand || "",
-        specurl: product.documents?.specs || "",
-        stock: product.stock || 0,
-        price: product.price || 0,
-        description: product.description || "",
-        product_id: product.id,
-        name: product.name,
-        imgurl: product.images?.[0] || ""
-      },
+    const items = Array.from(this.selectedProducts.values()).map(product => ({
+      customer_id: selectedCustomer.id,
+      product_id: product.id,
       customer_status: product.status,
-      amount: product.quantity.toString(),
-      notes: product.notes || ""
+      quantity: product.quantity,
+      notes: product.notes,
+      customer_name: `${selectedCustomer.firstName} ${selectedCustomer.lastName}`,
+      customer_tel: selectedCustomer.tel,
+      product_name: product.name,
+      product_price: product.price,
+      created_by: createdBy,
+      created_at: createdAt
     }));
 
-    console.log('Status data to submit:', salesData);
+    const payload = { items };
 
-    // Submit each status (simulated)
-    for (const saleData of salesData) {
-      await this.submitStatusData(saleData);
-    }
+    console.log('Submitting payload:', payload);
 
-    // Show success
-    this.showStatusSuccess(modal, salesData, selectedCustomer);
+    // ✅ ใช้ dataService ที่มี createStatusTracking
+    await dataService.createStatusTracking(payload.items);
+
+    this.showStatusSuccess(modal, payload.items, selectedCustomer);
 
   } catch (error) {
     console.error('Error saving statuses:', error);
-    
-    // Restore button
     const saveBtn = modal.querySelector('.save-all-btn');
     saveBtn.innerHTML = '<i class="fas fa-clipboard-check"></i> บันทึก Status ทั้งหมด';
     saveBtn.disabled = false;
@@ -1689,8 +1668,13 @@ async handleSaveAll(modal) {
  * Submit status data (placeholder)
  */
 async submitStatusData(statusData) {
-  // TODO: Replace with actual API call
-  return new Promise(resolve => setTimeout(resolve, 500));
+  return fetch('/api/sales-status', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(statusData)
+  });
 }
 
 /**
@@ -1698,21 +1682,21 @@ async submitStatusData(statusData) {
  */
 showStatusSuccess(modal, salesData, customer) {
   const modalBody = modal.querySelector('.modal-body');
-  
+
   modalBody.innerHTML = `
     <div style="text-align: center; padding: 3rem 2rem;">
       <div style="font-size: 6rem; color: #059669; margin-bottom: 2rem; animation: bounce 1s ease-in-out;">
         <i class="fas fa-check-circle"></i>
       </div>
-      
+
       <h3 style="font-size: 2.5rem; font-weight: 800; color: #1f2937; margin-bottom: 1rem;">
         บันทึก Status สำเร็จ!
       </h3>
-      
+
       <p style="font-size: 1.25rem; color: #6b7280; margin-bottom: 2rem;">
         บันทึกสถานะการติดตาม ${salesData.length} รายการให้ลูกค้า <strong>${customer.name}</strong> เรียบร้อยแล้ว
       </p>
-      
+
       <div style="
         background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
         border: 2px solid #bbf7d0;
@@ -1724,7 +1708,7 @@ showStatusSuccess(modal, salesData, customer) {
         <h4 style="color: #065f46; font-weight: 800; margin-bottom: 1.5rem; font-size: 1.5rem; text-align: center;">
           <i class="fas fa-clipboard-list"></i> สรุป Status ที่บันทึก
         </h4>
-        
+
         <div style="display: grid; gap: 1rem; max-height: 300px; overflow-y: auto;">
           ${salesData.map((sale, index) => `
             <div style="
@@ -1737,18 +1721,18 @@ showStatusSuccess(modal, salesData, customer) {
               align-items: center;
             ">
               <div>
-                <strong style="color: #065f46;">${this.escapeHtml(sale.Product.name)}</strong>
+                <strong style="color: #065f46;">${this.escapeHtml(sale.product_name)}</strong>
                 <div style="color: #6b7280; font-size: 0.875rem; margin-top: 0.25rem;">
-                  จำนวน: ${sale.amount} | สถานะ: ${this.escapeHtml(sale.customer_status)}
+                  จำนวน: ${sale.quantity} | สถานะ: ${this.escapeHtml(sale.customer_status)}
                 </div>
               </div>
               <div style="color: #059669; font-weight: 700; font-size: 1.125rem;">
-                ${this.formatCurrency(sale.Product.price * parseInt(sale.amount))}
+                ${this.formatCurrency(sale.product_price * parseInt(sale.quantity))}
               </div>
             </div>
           `).join('')}
         </div>
-        
+
         <div style="
           border-top: 2px solid #bbf7d0;
           margin-top: 1.5rem;
@@ -1759,11 +1743,13 @@ showStatusSuccess(modal, salesData, customer) {
         ">
           <span style="color: #065f46; font-weight: 800; font-size: 1.5rem;">ยอดรวมทั้งหมด:</span>
           <span style="color: #059669; font-weight: 900; font-size: 2rem;">
-            ${this.formatCurrency(salesData.reduce((sum, sale) => sum + (sale.Product.price * parseInt(sale.amount)), 0))}
+            ${this.formatCurrency(
+              salesData.reduce((sum, sale) => sum + (sale.product_price * parseInt(sale.quantity)), 0)
+            )}
           </span>
         </div>
       </div>
-      
+
       <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
         <button type="button" class="view-tracking-btn" style="
           padding: 1rem 2rem;
@@ -1778,7 +1764,7 @@ showStatusSuccess(modal, salesData, customer) {
         ">
           <i class="fas fa-chart-line"></i> ดูการติดตาม
         </button>
-        
+
         <button type="button" class="create-sale-btn" style="
           padding: 1rem 2rem;
           border: 2px solid #f97316;
@@ -1792,7 +1778,7 @@ showStatusSuccess(modal, salesData, customer) {
         ">
           <i class="fas fa-shopping-cart"></i> สร้างการขายจริง
         </button>
-        
+
         <button type="button" class="continue-btn" style="
           padding: 1rem 2rem;
           border: 2px solid #059669;
@@ -1845,7 +1831,7 @@ showStatusSuccess(modal, salesData, customer) {
 
   createSaleBtn.addEventListener('click', () => {
     this.closeMultiSelectModal(modal);
-    const productIds = salesData.map(s => s.Product.product_id).join(',');
+    const productIds = salesData.map(s => s.product_id).join(',');
     window.location.href = `product-details.html?products=${encodeURIComponent(productIds)}&customer=${encodeURIComponent(customer.id)}`;
   });
 

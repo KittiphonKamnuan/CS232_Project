@@ -7,6 +7,7 @@
  */
 
 import dataService from '../services/data-service.js';
+import statusTrackingController from './status-tracking-controller.js';
 
 class CustomerController {
   constructor() {
@@ -775,174 +776,222 @@ class CustomerController {
     }
   }
   
-  /**
-   * Display customer details
-   */
-  displayCustomerDetails(customer) {
-    if (!this.customerDetailsContainer) return;
-    
-    const priorityClass = this.getPriorityClass(customer.priority);
-    
-    const html = `
-      <!-- Customer Header -->
-      <div class="customer-header">
-        <div class="customer-title-section">
-          <h1 class="customer-title">${this.escapeHtml(customer.name)}</h1>
-          <p class="customer-code">รหัสลูกค้า: <span class="code-value">${this.escapeHtml(customer.id)}</span></p>
-          <div class="customer-status">
-            <span class="priority-badge ${priorityClass}">${this.getPriorityText(customer.priority)}</span>
-          </div>
-        </div>
-        
-        <div class="customer-actions-header">
-          <button class="btn btn-primary btn-large" id="create-sale-btn">
-            <i class="fas fa-shopping-cart"></i> สร้างการขาย
-          </button>
-          <button class="btn btn-outline btn-large" id="edit-customer-btn">
-            <i class="fas fa-edit"></i> แก้ไขข้อมูล
-          </button>
-          <button class="btn btn-danger btn-large" id="delete-customer-btn">
-            <i class="fas fa-trash"></i> ลบข้อมูล
-          </button>
+/**
+ * Display customer details (Updated with Status Tracking)
+ */
+displayCustomerDetails(customer) {
+  if (!this.customerDetailsContainer) return;
+
+  const priorityClass = this.getPriorityClass(customer.priority);
+
+  const html = `
+    <!-- Customer Header -->
+    <div class="customer-header">
+      <div class="customer-title-section">
+        <h1 class="customer-title">${this.escapeHtml(customer.name)}</h1>
+        <p class="customer-code">รหัสลูกค้า: <span class="code-value">${this.escapeHtml(customer.id)}</span></p>
+        <div class="customer-status">
+          <span class="priority-badge ${priorityClass}">${this.getPriorityText(customer.priority)}</span>
         </div>
       </div>
       
-      <!-- Customer Content -->
-      <div class="customer-content">
-        <!-- Left Column - Contact Information -->
-        <div class="customer-left-column">
-          <div class="customer-info-card">
-            <h3 class="card-title">
-              <i class="fas fa-user"></i> ข้อมูลติดต่อ
-            </h3>
-            <div class="contact-info">
-              <div class="contact-item">
-                <span class="contact-label">เบอร์โทร:</span>
-                <span class="contact-value">
-                  <a href="tel:${this.escapeHtml(customer.tel)}">${this.escapeHtml(customer.tel || 'ไม่ระบุ')}</a>
-                </span>
-              </div>
-              <div class="contact-item">
-                <span class="contact-label">อีเมล:</span>
-                <span class="contact-value">
-                  ${customer.email ? `<a href="mailto:${this.escapeHtml(customer.email)}">${this.escapeHtml(customer.email)}</a>` : 'ไม่ระบุ'}
-                </span>
-              </div>
-              <div class="contact-item">
-                <span class="contact-label">ที่อยู่:</span>
-                <span class="contact-value">${this.escapeHtml(customer.address || 'ไม่ระบุ')}</span>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Customer Statistics -->
-          <div class="customer-info-card">
-            <h3 class="card-title">
-              <i class="fas fa-chart-bar"></i> สถิติการซื้อ
-            </h3>
-            <div class="customer-stats">
-              <div class="stat-item">
-                <div class="stat-value">${customer.totalOrders || 0}</div>
-                <div class="stat-label">ครั้ง</div>
-                <div class="stat-description">จำนวนการซื้อ</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">${window.InfoHubApp ? window.InfoHubApp.formatCurrency(customer.totalSpent || 0) : '฿0'}</div>
-                <div class="stat-label">บาท</div>
-                <div class="stat-description">ยอดซื้อรวม</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">${customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString('th-TH') : '-'}</div>
-                <div class="stat-label">ครั้งล่าสุด</div>
-                <div class="stat-description">ซื้อล่าสุด</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Right Column - Additional Information -->
-        <div class="customer-right-column">
-          <!-- Timeline -->
-          <div class="customer-info-card">
-            <h3 class="card-title">
-              <i class="fas fa-history"></i> ประวัติการติดต่อ
-            </h3>
-            <div class="timeline">
-              <div class="timeline-item">
-                <div class="timeline-icon">
-                  <i class="fas fa-user-plus"></i>
-                </div>
-                <div class="timeline-content">
-                  <div class="timeline-title">ลูกค้าใหม่</div>
-                  <div class="timeline-description">เพิ่มข้อมูลลูกค้าในระบบ</div>
-                  <div class="timeline-date">${new Date(customer.created_at).toLocaleDateString('th-TH')}</div>
-                </div>
-              </div>
-              ${customer.lastContact ? `
-                <div class="timeline-item">
-                  <div class="timeline-icon">
-                    <i class="fas fa-phone"></i>
-                  </div>
-                  <div class="timeline-content">
-                    <div class="timeline-title">ติดต่อล่าสุด</div>
-                    <div class="timeline-description">ผ่าน ${this.getContactMethodText(customer.contactMethod)}</div>
-                    <div class="timeline-date">${new Date(customer.lastContact).toLocaleDateString('th-TH')}</div>
-                  </div>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-          
-          <!-- Notes -->
-          ${customer.note ? `
-            <div class="customer-info-card">
-              <h3 class="card-title">
-                <i class="fas fa-sticky-note"></i> หมายเหตุ
-              </h3>
-              <div class="customer-notes">
-                <p>${this.escapeHtml(customer.note)}</p>
-              </div>
-            </div>
-          ` : ''}
-          
-          <!-- Tags -->
-          ${customer.tags && customer.tags.length > 0 ? `
-            <div class="customer-info-card">
-              <h3 class="card-title">
-                <i class="fas fa-tags"></i> แท็ก
-              </h3>
-              <div class="customer-tags">
-                ${customer.tags.map(tag => `
-                  <span class="tag">${this.escapeHtml(tag)}</span>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-      
-      <!-- Action Buttons (Mobile Fixed) -->
-      <div class="customer-actions-mobile">
-        <button class="btn btn-primary btn-mobile" id="create-sale-btn-mobile">
+      <div class="customer-actions-header">
+        <button class="btn btn-primary btn-large" id="create-sale-btn">
           <i class="fas fa-shopping-cart"></i> สร้างการขาย
         </button>
-        <button class="btn btn-outline btn-mobile" id="edit-customer-btn-mobile">
+        <button class="btn btn-outline btn-large" id="edit-customer-btn">
           <i class="fas fa-edit"></i> แก้ไขข้อมูล
         </button>
-        <button class="btn btn-danger btn-mobile" id="delete-customer-btn-mobile">
+        <button class="btn btn-danger btn-large" id="delete-customer-btn">
           <i class="fas fa-trash"></i> ลบข้อมูล
         </button>
       </div>
-    `;
+    </div>
     
-    this.customerDetailsContainer.innerHTML = html;
+    <!-- Customer Content -->
+    <div class="customer-content">
+      <!-- Left Column - Contact Information and Stats -->
+      <div class="customer-left-column">
+        <div class="customer-info-card">
+          <h3 class="card-title">
+            <i class="fas fa-user"></i> ข้อมูลติดต่อ
+          </h3>
+          <div class="contact-info">
+            <div class="contact-item">
+              <span class="contact-label">เบอร์โทร:</span>
+              <span class="contact-value">
+                <a href="tel:${this.escapeHtml(customer.tel)}">${this.escapeHtml(customer.tel || 'ไม่ระบุ')}</a>
+              </span>
+            </div>
+            <div class="contact-item">
+              <span class="contact-label">อีเมล:</span>
+              <span class="contact-value">
+                ${customer.email ? `<a href="mailto:${this.escapeHtml(customer.email)}">${this.escapeHtml(customer.email)}</a>` : 'ไม่ระบุ'}
+              </span>
+            </div>
+            <div class="contact-item">
+              <span class="contact-label">ที่อยู่:</span>
+              <span class="contact-value">${this.escapeHtml(customer.address || 'ไม่ระบุ')}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Customer Statistics -->
+        <div class="customer-info-card">
+          <h3 class="card-title">
+            <i class="fas fa-chart-bar"></i> สถิติการซื้อ
+          </h3>
+          <div class="customer-stats">
+            <div class="stat-item">
+              <div class="stat-value">${customer.totalOrders || 0}</div>
+              <div class="stat-label">ครั้ง</div>
+              <div class="stat-description">จำนวนการซื้อ</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">${window.InfoHubApp ? window.InfoHubApp.formatCurrency(customer.totalSpent || 0) : '฿0'}</div>
+              <div class="stat-label">บาท</div>
+              <div class="stat-description">ยอดซื้อรวม</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value">${customer.lastOrderDate ? new Date(customer.lastOrderDate).toLocaleDateString('th-TH') : '-'}</div>
+              <div class="stat-label">ครั้งล่าสุด</div>
+              <div class="stat-description">ซื้อล่าสุด</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Column - Timeline and Additional Information -->
+      <div class="customer-right-column">
+        <!-- Timeline -->
+        <div class="customer-info-card">
+          <h3 class="card-title">
+            <i class="fas fa-history"></i> ประวัติการติดต่อ
+          </h3>
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-icon">
+                <i class="fas fa-user-plus"></i>
+              </div>
+              <div class="timeline-content">
+                <div class="timeline-title">ลูกค้าใหม่</div>
+                <div class="timeline-description">เพิ่มข้อมูลลูกค้าในระบบ</div>
+                <div class="timeline-date">${new Date(customer.created_at).toLocaleDateString('th-TH')}</div>
+              </div>
+            </div>
+            ${customer.lastContact ? `
+              <div class="timeline-item">
+                <div class="timeline-icon">
+                  <i class="fas fa-phone"></i>
+                </div>
+                <div class="timeline-content">
+                  <div class="timeline-title">ติดต่อล่าสุด</div>
+                  <div class="timeline-description">ผ่าน ${this.getContactMethodText(customer.contactMethod)}</div>
+                  <div class="timeline-date">${new Date(customer.lastContact).toLocaleDateString('th-TH')}</div>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+        
+        <!-- Notes -->
+        ${customer.note ? `
+          <div class="customer-info-card">
+            <h3 class="card-title">
+              <i class="fas fa-sticky-note"></i> หมายเหตุ
+            </h3>
+            <div class="customer-notes">
+              <p>${this.escapeHtml(customer.note)}</p>
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Tags -->
+        ${customer.tags && customer.tags.length > 0 ? `
+          <div class="customer-info-card">
+            <h3 class="card-title">
+              <i class="fas fa-tags"></i> แท็ก
+            </h3>
+            <div class="customer-tags">
+              ${customer.tags.map(tag => `
+                <span class="tag">${this.escapeHtml(tag)}</span>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    </div>
     
-    // Setup event listeners for customer details
-    this.setupCustomerDetailsEventListeners();
+    <!-- Status Tracking Section -->
+    <div class="customer-status-tracking-section">
+      <div id="status-tracking-container">
+        <!-- StatusTrackingController จะเติมข้อมูลตรงนี้ -->
+      </div>
+    </div>
     
-    // Add custom styles for customer details
-    this.addCustomerDetailsStyles();
+    <!-- Action Buttons (Mobile Fixed) -->
+    <div class="customer-actions-mobile">
+      <button class="btn btn-primary btn-mobile" id="create-sale-btn-mobile">
+        <i class="fas fa-shopping-cart"></i> สร้างการขาย
+      </button>
+      <button class="btn btn-outline btn-mobile" id="edit-customer-btn-mobile">
+        <i class="fas fa-edit"></i> แก้ไขข้อมูล
+      </button>
+      <button class="btn btn-danger btn-mobile" id="delete-customer-btn-mobile">
+        <i class="fas fa-trash"></i> ลบข้อมูล
+      </button>
+    </div>
+  `;
+
+  this.customerDetailsContainer.innerHTML = html;
+
+  // Setup event listeners for customer details
+  this.setupCustomerDetailsEventListeners();
+
+  // Initialize Status Tracking Controller
+  this.initializeStatusTracking(customer.id);
+
+  // Add custom styles for customer details
+  this.addCustomerDetailsStyles();
+}
+
+/**
+ * Initialize Status Tracking for current customer
+ */
+async initializeStatusTracking(customerId) {
+  try {
+    const statusTrackingContainer = document.getElementById('status-tracking-container');
+    if (!statusTrackingContainer) {
+      console.warn('Status tracking container not found');
+      return;
+    }
+
+    // Initialize Status Tracking Controller
+    await statusTrackingController.initialize(customerId, statusTrackingContainer);
+
+  } catch (error) {
+    console.error('Error initializing status tracking:', error);
+    
+    // Show error in status tracking container
+    const statusTrackingContainer = document.getElementById('status-tracking-container');
+    if (statusTrackingContainer) {
+      statusTrackingContainer.innerHTML = `
+        <div class="customer-info-card">
+          <div class="error-content">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="error-text">
+              <h3>ไม่สามารถโหลดข้อมูลสถานะได้</h3>
+              <p>เกิดข้อผิดพลาดในการโหลดข้อมูลการติดตามสถานะ</p>
+            </div>
+            <button class="btn btn-primary" onclick="location.reload()">
+              <i class="fas fa-redo"></i> โหลดใหม่
+            </button>
+          </div>
+        </div>
+      `;
+    }
   }
+}
   
   /**
    * Setup event listeners for customer details page
@@ -1204,7 +1253,7 @@ getContactMethodText(method) {
 }
 
 /**
- * Add custom styles for customer details - Enhanced version
+ * Add custom styles for customer details - Enhanced version with Status Tracking
  */
 addCustomerDetailsStyles() {
   const styleId = 'customer-details-styles';
@@ -1213,6 +1262,7 @@ addCustomerDetailsStyles() {
   const style = document.createElement('style');
   style.id = styleId;
   style.textContent = `
+    /* Customer Details Styles */
     .customer-details-container {
       max-width: 1200px;
       margin: 0 auto;
@@ -1260,16 +1310,6 @@ addCustomerDetailsStyles() {
       font-weight: 600;
       text-transform: uppercase;
     }
-    
-    /* Status Styles */
-    .status-interested { background: #dbeafe; color: #1e40af; }
-    .status-contacted { background: #fef3c7; color: #92400e; }
-    .status-negotiating { background: #fed7d7; color: #c53030; }
-    .status-confirmed { background: #d1fae5; color: #065f46; }
-    .status-pending { background: #fde68a; color: #92400e; }
-    .status-paid { background: #d1fae5; color: #065f46; }
-    .status-delivered { background: #dbeafe; color: #1e40af; }
-    .status-after-sales { background: #e0e7ff; color: #3730a3; }
     
     /* Priority Styles */
     .priority-low { background: #f3f4f6; color: #6b7280; }
@@ -1447,6 +1487,12 @@ addCustomerDetailsStyles() {
       font-weight: 500;
     }
     
+    /* Status Tracking Section Styles */
+    .customer-status-tracking-section {
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+    }
+    
     .customer-actions-mobile {
       display: none;
       position: fixed;
@@ -1465,6 +1511,36 @@ addCustomerDetailsStyles() {
       padding: 0.75rem;
       font-weight: 600;
       font-size: 0.875rem;
+    }
+    
+    /* Error Content Styles */
+    .error-content {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      text-align: left;
+    }
+    
+    .error-content i {
+      color: #dc2626;
+      font-size: 2rem;
+      flex-shrink: 0;
+    }
+    
+    .error-text {
+      flex: 1;
+    }
+    
+    .error-text h3 {
+      color: #dc2626;
+      margin-bottom: 0.5rem;
+      font-size: 1.125rem;
+    }
+    
+    .error-text p {
+      color: #6b7280;
+      margin-bottom: 0;
     }
     
     /* Responsive Design */
@@ -1505,6 +1581,10 @@ addCustomerDetailsStyles() {
         flex-direction: column;
         align-items: flex-start;
         gap: 0.25rem;
+      }
+      
+      .customer-status-tracking-section {
+        margin-bottom: 80px; /* Space for mobile actions */
       }
     }
     
