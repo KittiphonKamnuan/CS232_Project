@@ -19,6 +19,8 @@ const API_ENDPOINTS = {
   DELETE_CUSTOMER: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/DeleteCustomer',
   CREATE_STATUS_TRACKING: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/CreateStatusTracking',
   GET_STATUS_TRACKING: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetStatusTracking',
+  UPDATE_STATUS_TRACKING: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/UpdateStatusTracking',
+  DELETE_STATUS_TRACKING: 'https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/DeleteStatusTracking',
   SALES: 'https://api.infohub360.com/sales',
   DOCUMENTS: 'https://api.infohub360.com/documents'
 };
@@ -1000,8 +1002,8 @@ async updateStatusTracking(stateId, updateData) {
     
     console.log('Update API Data to send:', JSON.stringify(apiData, null, 2));
     
-    // ลองใช้ UPDATE_CUSTOMER endpoint หรือสร้าง endpoint ใหม่
-    const response = await fetch(API_ENDPOINTS.UPDATE_CUSTOMER, {
+    // ใช้ endpoint ใหม่
+    const response = await fetch(API_ENDPOINTS.UPDATE_STATUS_TRACKING, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -1037,11 +1039,9 @@ async updateStatusTracking(stateId, updateData) {
   } catch (err) {
     console.error('Error updating status tracking:', err);
     
-    // ถ้าเป็น CORS/Network error ให้จำลองการทำงาน
     if (err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes('CORS'))) {
       console.warn('Network/CORS error detected, simulating successful update');
       
-      // จำลองการอัปเดตสำเร็จ
       return {
         success: true,
         message: 'อัปเดตสถานะเรียบร้อย (โหมดทดสอบ)',
@@ -1069,7 +1069,8 @@ async deleteStatusTracking(stateId) {
     
     console.log('Delete Status API Data to send:', JSON.stringify(apiData, null, 2));
     
-    const response = await fetch(API_ENDPOINTS.DELETE_CUSTOMER, {
+    // ใช้ endpoint ใหม่
+    const response = await fetch(API_ENDPOINTS.DELETE_STATUS_TRACKING, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
@@ -1105,11 +1106,8 @@ async deleteStatusTracking(stateId) {
   } catch (err) {
     console.error('Error deleting status tracking:', err);
     
-    // ถ้าเป็น CORS/Network error ให้จำลองการทำงาน
     if (err.name === 'TypeError' && (err.message.includes('fetch') || err.message.includes('CORS'))) {
       console.warn('Network/CORS error detected, simulating successful deletion');
-      
-      // จำลองการลบสำเร็จ
       return true;
     }
     
