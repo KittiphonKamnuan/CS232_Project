@@ -172,128 +172,131 @@
     </div>
   </div>
   
-  <!-- Share Modal Template -->
-  <template id="share-modal-template">
-    <div class="modal-backdrop">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>ส่งข้อมูลให้ลูกค้า</h2>
-          <button class="modal-close" type="button">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        
-        <div class="modal-body">
-          <div class="document-preview">
-            <div class="preview-header">
-              <div class="preview-thumbnail">
-                <i class="fas fa-image"></i>
-              </div>
-              <div class="preview-info">
-                <h3 class="preview-title">ชื่อสินค้า</h3>
-                <p class="preview-code">รหัสสินค้า: </p>
-                <p class="preview-price">฿0</p>
-              </div>
+<!-- Share Modal Template -->
+<template id="share-modal-template">
+  <div class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>ส่งข้อมูลให้ลูกค้า</h2>
+        <button class="modal-close" type="button">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="document-preview">
+          <div class="preview-header">
+            <div class="preview-thumbnail">
+              <i class="fas fa-image"></i>
+            </div>
+            <div class="preview-info">
+              <h3 class="preview-title">ชื่อสินค้า</h3>
+              <p class="preview-code">รหัสสินค้า: </p>
+              <p class="preview-price">฿0</p>
             </div>
           </div>
+        </div>
+        
+        <!-- Customer Email Input -->
+        <div class="form-group">
+          <label class="form-label" for="customer-email-input">
+            <i class="fas fa-envelope"></i> อีเมลลูกค้า *
+          </label>
+          <div class="input-container">
+            <input type="email" 
+                   id="customer-email-input" 
+                   placeholder="กรอกอีเมลลูกค้า เช่น customer@example.com" 
+                   required
+                   style="padding-left: 2.5rem;">
+            <i class="fas fa-at" style="position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: #6b7280;"></i>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <h3 class="form-label">เลือกข้อมูลที่ต้องการส่ง</h3>
           
-          <div class="form-group">
-            <h3 class="form-label">เลือกข้อมูลที่ต้องการส่ง</h3>
+          <div class="form-grid">
+            <!-- Document Selection -->
+            <div class="form-section">
+              <p class="section-label">📄 เอกสารประกอบ</p>
+              <div class="checkbox-list">
+                <div class="checkbox-group">
+                  <input type="checkbox" id="modal-spec" class="checkbox-input" data-doc-type="specs">
+                  <label for="modal-spec">สเปคสินค้า</label>
+                </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="modal-manual" class="checkbox-input" data-doc-type="manual">
+                  <label for="modal-manual">คู่มือการใช้งาน</label>
+                </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="modal-compare" class="checkbox-input" data-doc-type="compare">
+                  <label for="modal-compare">เปรียบเทียบรุ่น</label>
+                </div>
+              </div>
+            </div>
             
-            <div class="form-grid">
-              <!-- Document Selection -->
-              <div class="form-section">
-                <p class="section-label">เอกสาร</p>
-                <div class="checkbox-list">
-                  <div class="checkbox-group">
-                    <input type="checkbox" id="modal-spec" class="checkbox-input" checked>
-                    <label for="modal-spec">สเปคสินค้า</label>
-                  </div>
-                  <div class="checkbox-group">
-                    <input type="checkbox" id="modal-manual" class="checkbox-input">
-                    <label for="modal-manual">คู่มือการใช้งาน</label>
-                  </div>
-                  <div class="checkbox-group">
-                    <input type="checkbox" id="modal-compare" class="checkbox-input" checked>
-                    <label for="modal-compare">เปรียบเทียบรุ่น</label>
-                  </div>
+            <!-- Info Section -->
+            <div class="form-section">
+              <p class="section-label">💰 ข้อมูลเพิ่มเติม</p>
+              <div class="checkbox-list">
+                <div class="checkbox-group">
+                  <input type="checkbox" id="modal-price" class="checkbox-input" checked disabled>
+                  <label for="modal-price">ราคาและรายละเอียด</label>
                 </div>
-              </div>
-              
-              <!-- Price and Availability -->
-              <div class="form-section">
-                <p class="section-label">ข้อมูลราคาและสต๊อก</p>
-                <div class="checkbox-list">
-                  <div class="checkbox-group">
-                    <input type="checkbox" id="modal-price" class="checkbox-input" checked>
-                    <label for="modal-price">ราคา</label>
-                  </div>
-                  <div class="checkbox-group">
-                    <input type="checkbox" id="modal-stock" class="checkbox-input" checked>
-                    <label for="modal-stock">สถานะสต๊อกสินค้า</label>
-                  </div>
-                  <div class="checkbox-group">
-                    <input type="checkbox" id="modal-delivery" class="checkbox-input">
-                    <label for="modal-delivery">ข้อมูลการจัดส่ง</label>
-                  </div>
-                  <div class="checkbox-group">
-                    <input type="checkbox" id="modal-warranty" class="checkbox-input">
-                    <label for="modal-warranty">รายละเอียดการรับประกัน</label>
-                  </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="modal-stock" class="checkbox-input" checked disabled>
+                  <label for="modal-stock">สถานะสต๊อก</label>
+                </div>
+                <div class="checkbox-group">
+                  <input type="checkbox" id="modal-delivery" class="checkbox-input">
+                  <label for="modal-delivery">ข้อมูลการจัดส่ง</label>
                 </div>
               </div>
             </div>
-          </div>
-          
-          <!-- Custom Message -->
-          <div class="form-group">
-            <label class="form-label" for="custom-message">ข้อความเพิ่มเติม</label>
-            <textarea id="custom-message" placeholder="เพิ่มข้อความส่วนตัวถึงลูกค้า..." rows="3"></textarea>
-          </div>
-          
-          <!-- Send To -->
-          <div class="form-group">
-            <p class="form-label">ส่งถึงลูกค้า</p>
-            <div class="customer-select">
-              <div class="input-container">
-                <input type="text" id="customer-contact" placeholder="กรอกอีเมลหรือเบอร์โทรศัพท์">
-              </div>
-              <small class="form-note">* ระบบลูกค้าอยู่ระหว่างการพัฒนา</small>
-            </div>
-          </div>
-          
-          <!-- Send Methods -->
-          <div class="form-group">
-            <p class="form-label">ช่องทางการส่ง</p>
-            <div class="share-methods">
-              <button type="button" class="share-method" data-method="line" disabled>
-                <i class="fab fa-line"></i> LINE
-              </button>
-              <button type="button" class="share-method" data-method="email" disabled>
-                <i class="fas fa-envelope"></i> อีเมล
-              </button>
-              <button type="button" class="share-method" data-method="sms" disabled>
-                <i class="fas fa-comment-alt"></i> SMS
-              </button>
-              <button type="button" class="share-method" data-method="qr" disabled>
-                <i class="fas fa-qrcode"></i> QR Code
-              </button>
-            </div>
-            <small class="form-note">* ระบบส่งข้อมูลอยู่ระหว่างการพัฒนา</small>
           </div>
         </div>
         
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline modal-close">
-            ยกเลิก
-          </button>
-          <button type="button" class="btn btn-primary" id="modal-send-button">
-            แสดงตัวอย่าง
-          </button>
+        <!-- ลบส่วน Custom Message ออกทั้งหมด -->
+        
+        <!-- Email Preview Info -->
+        <div class="form-group">
+          <div class="email-preview-info" style="
+            background: #f0f9ff; 
+            border: 1px solid #bfdbfe; 
+            border-radius: 0.5rem; 
+            padding: 1rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+          ">
+            <div style="color: #3b82f6; font-size: 1.25rem; flex-shrink: 0;">
+              <i class="fas fa-envelope"></i>
+            </div>
+            <div>
+              <h4 style="color: #1e40af; font-weight: 600; margin: 0 0 0.5rem 0; font-size: 0.875rem;">
+                ข้อมูลที่จะส่งให้ลูกค้า
+              </h4>
+              <p style="color: #1e40af; margin: 0; font-size: 0.875rem; line-height: 1.4;">
+                • ข้อมูลสินค้าพร้อมราคา<br>
+                • เอกสารที่เลือกไว้ (ถ้ามี)<br>
+                • ข้อมูลติดต่อบริษัท
+              </p>
+            </div>
+          </div>
         </div>
       </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline modal-close">
+          <i class="fas fa-times"></i> ยกเลิก
+        </button>
+        <button type="button" class="btn btn-primary" id="modal-send-button">
+          <i class="fas fa-envelope"></i> ส่งอีเมล
+        </button>
+      </div>
     </div>
-  </template>
+  </div>
+</template>
 
   <!-- JavaScript Files -->
   <script type="module" src="js/services/data-service.js"></script>
