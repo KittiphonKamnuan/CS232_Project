@@ -386,6 +386,457 @@ function getNotificationColor(type) {
 }
 
 /**
+ * Setup search functionality with enhanced features
+ */
+function setupSearchFunctionality() {
+  const searchInput = document.getElementById('search-keyword');
+  const searchButton = document.getElementById('search-button');
+  const clearButton = document.getElementById('clear-search');
+  const categoryFilter = document.getElementById('category-filter');
+  
+  // Setup search input functionality
+  if (searchInput) {
+    // Set enhanced placeholder
+    searchInput.placeholder = 'ค้นหาด้วยชื่อสินค้า, รหัส, คุณสมบัติ หรือช่วงราคา';
+    
+    // Search hints for better UX
+    const searchHints = [
+      'ค้นหาด้วยชื่อสินค้า, รหัส, คุณสมบัติ หรือช่วงราคา',
+      'ลองค้นหา "ทีวี Samsung" หรือ "รหัส TV001"',
+      'ค้นหาด้วยยี่ห้อ เช่น "LG" หรือ "Sony"',
+      'ค้นหาด้วยราคา เช่น "10000-20000"',
+      'ค้นหาด้วยคุณสมบัติ เช่น "4K" หรือ "Smart TV"',
+      'ค้นหาด้วยรุ่น เช่น "C2" หรือ "A80J"'
+    ];
+    
+    let hintIndex = 0;
+    let hintInterval;
+    
+    // Start hint rotation
+    function startHintRotation() {
+      hintInterval = setInterval(() => {
+        if (document.activeElement !== searchInput && !searchInput.value.trim()) {
+          hintIndex = (hintIndex + 1) % searchHints.length;
+          searchInput.placeholder = searchHints[hintIndex];
+        }
+      }, 4000);
+    }
+    
+    // Stop hint rotation
+    function stopHintRotation() {
+      if (hintInterval) {
+        clearInterval(hintInterval);
+        hintInterval = null;
+      }
+    }
+    
+    // Start hint rotation on page load
+    setTimeout(startHintRotation, 3000);
+    
+    // Handle focus events
+    searchInput.addEventListener('focus', function() {
+      stopHintRotation();
+      this.placeholder = 'ค้นหาด้วยชื่อสินค้า, รหัส, คุณสมบัติ หรือช่วงราคา';
+      
+      // Add focus styling
+      this.parentElement.classList.add('search-focused');
+    });
+    
+    // Handle blur events
+    searchInput.addEventListener('blur', function() {
+      this.parentElement.classList.remove('search-focused');
+      
+      // Restart hint rotation if input is empty
+      if (!this.value.trim()) {
+        setTimeout(startHintRotation, 2000);
+      }
+    });
+    
+    // Handle Enter key in search input
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        triggerSearch();
+      }
+    });
+    
+    // Handle input changes for real-time feedback
+    searchInput.addEventListener('input', function() {
+      const value = this.value.trim();
+      
+      // Enable/disable search button
+      if (searchButton) {
+        searchButton.disabled = false;
+        
+        // Add visual feedback
+        if (value.length > 0) {
+          searchButton.classList.add('search-active');
+          this.parentElement.classList.add('has-value');
+        } else {
+          searchButton.classList.remove('search-active');
+          this.parentElement.classList.remove('has-value');
+        }
+      }
+      
+      // Show clear button when there's text
+      if (clearButton) {
+        if (value.length > 0) {
+          clearButton.style.display = 'block';
+          clearButton.style.opacity = '1';
+        } else {
+          clearButton.style.opacity = '0';
+          setTimeout(() => {
+            if (!this.value.trim()) {
+              clearButton.style.display = 'none';
+            }
+          }, 200);
+        }
+      }
+      
+      // Stop hint rotation when typing
+      if (value.length > 0) {
+        stopHintRotation();
+      } else if (document.activeElement !== this) {
+        setTimeout(startHintRotation, 2000);
+      }
+      
+      // Auto-search after user stops typing (debounce)
+      clearTimeout(this.searchTimeout);
+      if (value.length >= 2) {
+        this.searchTimeout = setTimeout(() => {
+          console.log('Auto-searching for:', value);
+          triggerSearch();
+        }, 1000); // Wait 1 second after user stops typing
+      }
+    });
+    
+    // Handle keyboard shortcuts
+    searchInput.addEventListener('keydown', function(e) {
+      // Ctrl/Cmd + A = Select all
+      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+        // Let default behavior happen
+        return;
+      }
+      
+      // Escape = Clear and blur
+      if (e.key === 'Escape') {
+        this.value = '';
+        this.blur();
+        clearSearch();
+      }
+      
+      // Arrow up/down for search history (future feature)
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        // TODO: Implement search history navigation
+        console.log('Search history navigation:', e.key);
+      }
+    });
+  }
+  
+  // Handle search button click
+  if (searchButton) {
+    searchButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Add click animation
+      this.classList.add('button-clicked');
+      setTimeout(() => {
+        this.classList.remove('button-clicked');
+      }, 150);
+      
+      triggerSearch();
+    });
+    
+    // Initial state
+    searchButton.disabled = false;
+  }
+  
+  // Handle clear button
+  if (clearButton) {
+    clearButton.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Add click animation
+      this.classList.add('button-clicked');
+      setTimeout(() => {
+        this.classList.remove('button-clicked');
+      }, 150);
+      
+      clearSearch();
+      
+      // Focus back to search input
+      if (searchInput) {
+        searchInput.focus();
+      }
+    });
+    
+    // Initial state - hide clear button
+    clearButton.style.display = 'none';
+  }
+  
+  // Handle category filter change
+  if (categoryFilter) {
+    categoryFilter.addEventListener('change', function() {
+      // Add visual feedback
+      if (this.value) {
+        this.classList.add('filter-active');
+      } else {
+        this.classList.remove('filter-active');
+      }
+      
+      // Auto-trigger search when category changes
+      console.log('Category changed to:', this.value);
+      setTimeout(triggerSearch, 100);
+    });
+    
+    // Initial state check
+    if (categoryFilter.value) {
+      categoryFilter.classList.add('filter-active');
+    }
+  }
+  
+  // Setup search suggestions (future enhancement)
+  setupSearchSuggestions();
+  
+  // Setup search history (future enhancement)
+  setupSearchHistory();
+  
+  // Add search analytics
+  setupSearchAnalytics();
+}
+
+/**
+ * Setup search suggestions functionality
+ */
+function setupSearchSuggestions() {
+  const searchInput = document.getElementById('search-keyword');
+  if (!searchInput) return;
+  
+  // Create suggestions container
+  const suggestionsContainer = document.createElement('div');
+  suggestionsContainer.className = 'search-suggestions';
+  suggestionsContainer.style.cssText = `
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    display: none;
+  `;
+  
+  // Insert after search input container
+  const searchContainer = searchInput.parentElement;
+  searchContainer.style.position = 'relative';
+  searchContainer.appendChild(suggestionsContainer);
+  
+  // Sample suggestions (in real app, these would come from API)
+  const sampleSuggestions = [
+    'ทีวี Samsung',
+    'เครื่องซักผ้า LG',
+    'ตู้เย็น Sharp',
+    'เครื่องปรับอากาศ Daikin',
+    'Smart TV 4K',
+    'ตู้เย็น 2 ประตู',
+    'เครื่องซักผ้าฝาบน',
+    'แอร์แบบแขวน'
+  ];
+  
+  let currentSuggestionIndex = -1;
+  
+  // Show suggestions
+  searchInput.addEventListener('input', function() {
+    const value = this.value.trim().toLowerCase();
+    
+    if (value.length < 2) {
+      suggestionsContainer.style.display = 'none';
+      return;
+    }
+    
+    // Filter suggestions
+    const filteredSuggestions = sampleSuggestions.filter(suggestion =>
+      suggestion.toLowerCase().includes(value)
+    );
+    
+    if (filteredSuggestions.length === 0) {
+      suggestionsContainer.style.display = 'none';
+      return;
+    }
+    
+    // Render suggestions
+    suggestionsContainer.innerHTML = filteredSuggestions
+      .slice(0, 5) // Show max 5 suggestions
+      .map((suggestion, index) => `
+        <div class="suggestion-item" data-index="${index}" style="
+          padding: 0.75rem 1rem;
+          cursor: pointer;
+          border-bottom: 1px solid #f3f4f6;
+          transition: background-color 0.2s;
+        " onmouseover="this.style.backgroundColor='#f3f4f6'" 
+           onmouseout="this.style.backgroundColor='white'">
+          <i class="fas fa-search" style="color: #9ca3af; margin-right: 0.5rem;"></i>
+          ${escapeHtml(suggestion)}
+        </div>
+      `).join('');
+    
+    suggestionsContainer.style.display = 'block';
+    currentSuggestionIndex = -1;
+    
+    // Add click listeners to suggestions
+    suggestionsContainer.querySelectorAll('.suggestion-item').forEach((item, index) => {
+      item.addEventListener('click', function() {
+        searchInput.value = filteredSuggestions[index];
+        suggestionsContainer.style.display = 'none';
+        triggerSearch();
+      });
+    });
+  });
+  
+  // Handle keyboard navigation in suggestions
+  searchInput.addEventListener('keydown', function(e) {
+    const suggestions = suggestionsContainer.querySelectorAll('.suggestion-item');
+    
+    if (suggestions.length === 0) return;
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestions.length - 1);
+      updateSuggestionSelection(suggestions);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
+      updateSuggestionSelection(suggestions);
+    } else if (e.key === 'Enter' && currentSuggestionIndex >= 0) {
+      e.preventDefault();
+      suggestions[currentSuggestionIndex].click();
+    }
+  });
+  
+  // Hide suggestions when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!searchContainer.contains(e.target)) {
+      suggestionsContainer.style.display = 'none';
+    }
+  });
+  
+  function updateSuggestionSelection(suggestions) {
+    suggestions.forEach((item, index) => {
+      if (index === currentSuggestionIndex) {
+        item.style.backgroundColor = '#dbeafe';
+        item.style.color = '#1e40af';
+      } else {
+        item.style.backgroundColor = 'white';
+        item.style.color = 'inherit';
+      }
+    });
+  }
+}
+
+/**
+ * Setup search history functionality
+ */
+function setupSearchHistory() {
+  const SEARCH_HISTORY_KEY = 'infohub_search_history';
+  const MAX_HISTORY_ITEMS = 10;
+  
+  // Get search history from localStorage
+  function getSearchHistory() {
+    try {
+      const history = localStorage.getItem(SEARCH_HISTORY_KEY);
+      return history ? JSON.parse(history) : [];
+    } catch (e) {
+      console.warn('Failed to load search history:', e);
+      return [];
+    }
+  }
+  
+  // Save search to history
+  function saveSearchToHistory(searchTerm, category = '') {
+    if (!searchTerm.trim()) return;
+    
+    try {
+      let history = getSearchHistory();
+      
+      // Remove duplicate if exists
+      history = history.filter(item => 
+        !(item.term === searchTerm && item.category === category)
+      );
+      
+      // Add to beginning
+      history.unshift({
+        term: searchTerm,
+        category: category,
+        timestamp: Date.now()
+      });
+      
+      // Limit history size
+      history = history.slice(0, MAX_HISTORY_ITEMS);
+      
+      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+      console.warn('Failed to save search history:', e);
+    }
+  }
+  
+  // Listen for search events to save history
+  document.addEventListener('search-triggered', function(e) {
+    const { keyword, category } = e.detail;
+    if (keyword) {
+      saveSearchToHistory(keyword, category);
+    }
+  });
+  
+  // Export for external use
+  window.InfoHubApp.getSearchHistory = getSearchHistory;
+  window.InfoHubApp.saveSearchToHistory = saveSearchToHistory;
+}
+
+/**
+ * Setup search analytics
+ */
+function setupSearchAnalytics() {
+  const analytics = {
+    searchCount: 0,
+    popularTerms: {},
+    lastSearchTime: null
+  };
+  
+  // Track search events
+  document.addEventListener('search-triggered', function(e) {
+    const { keyword, category } = e.detail;
+    
+    // Update analytics
+    analytics.searchCount++;
+    analytics.lastSearchTime = Date.now();
+    
+    if (keyword) {
+      analytics.popularTerms[keyword] = (analytics.popularTerms[keyword] || 0) + 1;
+    }
+    
+    // Log for debugging
+    console.log('Search Analytics:', {
+      term: keyword,
+      category: category,
+      totalSearches: analytics.searchCount,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Send to analytics service (future implementation)
+    // sendAnalyticsEvent('search', { keyword, category });
+  });
+  
+  // Export analytics
+  window.InfoHubApp.getSearchAnalytics = () => ({ ...analytics });
+}
+
+/**
  * Escape HTML to prevent XSS
  * @param {string} text - Text to escape
  * @returns {string} - Escaped HTML

@@ -623,7 +623,6 @@ class SaleController {
       const tel = modalElement.querySelector('#new-tel').value.trim();
       const email = modalElement.querySelector('#new-email').value.trim();
       const address = modalElement.querySelector('#new-address').value.trim();
-      const status = modalElement.querySelector('#new-status').value;
       const note = modalElement.querySelector('#new-note').value.trim();
       
       // Validate required fields
@@ -645,7 +644,6 @@ class SaleController {
         tel: tel,
         email: email,
         address: address,
-        status: status,
         note: note
       };
       

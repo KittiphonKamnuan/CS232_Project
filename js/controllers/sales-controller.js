@@ -1,7 +1,7 @@
 /**
  * sales-controller.js
  * Controller สำหรับจัดการข้อมูลการขาย
- * อัปเดตให้ใช้ข้อมูลจริงจาก API และไม่ใช้ mockup
+ * อัปเดตให้ใช้ข้อมูลจริงจาก API GetAllStatusTracking
  */
 
 import dataService from '../services/data-service.js';
@@ -41,6 +41,16 @@ class SalesController {
     // ตัวแปรเก็บข้อมูลจริงจาก API
     this.customers = [];
     this.products = [];
+    this.statusTrackingData = [];
+    
+    // กำหนด 5 สถานะหลัก
+    this.statusMapping = {
+      'สนใจ': 'ลูกค้าสนใจสินค้า',
+      'รอชำระเงิน': 'รอชำระเงิน', 
+      'ชำระเงินแล้ว': 'ชำระเงินแล้ว',
+      'ส่งมอบสินค้า': 'ส่งมอบสินค้า',
+      'บริการหลังการขาย': 'บริการหลังการขาย'
+    };
     
     // Initialize
     this.init();
@@ -129,6 +139,23 @@ class SalesController {
   }
   
   /**
+   * ดึงข้อมูล Status Tracking จาก API
+   */
+  async getAllStatusTracking() {
+    try {
+      const response = await fetch('https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetAllStatusTracking');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch status tracking: HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching status tracking:', error);
+      throw new Error('ไม่สามารถโหลดข้อมูลสถานะลูกค้าได้');
+    }
+  }
+  
+  /**
    * โหลดข้อมูลสถิติและรายงานการขายจาก API จริง
    */
   async loadSalesData() {
@@ -136,10 +163,11 @@ class SalesController {
       this.showLoading();
       this.hideError();
       
-      // โหลดข้อมูลลูกค้าและสินค้าจาก API จริง
-      const [customersResult, productsResult] = await Promise.allSettled([
+      // โหลดข้อมูลจาก API
+      const [customersResult, productsResult, statusTrackingResult] = await Promise.allSettled([
         dataService.getCustomers(),
-        dataService.getProducts()
+        dataService.getProducts(),
+        this.getAllStatusTracking()
       ]);
       
       // จัดการผลลัพธ์ลูกค้า
@@ -160,6 +188,15 @@ class SalesController {
         this.products = [];
       }
       
+      // จัดการผลลัพธ์ Status Tracking
+      if (statusTrackingResult.status === 'fulfilled') {
+        this.statusTrackingData = statusTrackingResult.value || [];
+        console.log('Loaded status tracking data:', this.statusTrackingData.length);
+      } else {
+        console.error('Failed to load status tracking:', statusTrackingResult.reason);
+        this.statusTrackingData = [];
+      }
+      
       // คำนวณสถิติจากข้อมูลจริง
       const statistics = this.calculateSalesStatistics();
       
@@ -169,7 +206,7 @@ class SalesController {
       // แสดงข้อมูล Sales Pipeline
       this.renderSalesPipeline(statistics);
       
-      // แสดงข้อมุล Top Products
+      // แสดงข้อมูล Top Products
       this.renderTopProducts(statistics);
       
       // แสดงข้อมูล Sales Activities
@@ -187,61 +224,119 @@ class SalesController {
   }
   
   /**
-   * คำนวณสถิติการขายจากข้อมูลจริง
+   * กรองข้อมูล Status Tracking ตามช่วงวันที่
+   */
+  filterStatusTrackingByDate(data) {
+    if (!this.filters.dateFrom || !this.filters.dateTo) {
+      return data;
+    }
+    
+    const fromDate = new Date(this.filters.dateFrom);
+    const toDate = new Date(this.filters.dateTo);
+    toDate.setHours(23, 59, 59, 999); // ตั้งเป็นสิ้นวัน
+    
+    return data.filter(item => {
+      const itemDate = new Date(item.created_at);
+      return itemDate >= fromDate && itemDate <= toDate;
+    });
+  }
+  
+  /**
+   * คำนวณสถิติการขายจากข้อมูล Status Tracking จริง
    */
   calculateSalesStatistics() {
+    // กรองข้อมูลตามช่วงวันที่
+    const filteredData = this.filterStatusTrackingByDate(this.statusTrackingData);
+    
+    // คำนวณสถิติพื้นฐาน
     const totalCustomers = this.customers.length;
     const totalProducts = this.products.length;
+    const totalStatusRecords = filteredData.length;
     
-    // นับลูกค้าตามสถานะ
-    const customersByStatus = this.customers.reduce((acc, customer) => {
-      const status = customer.status || 'interested';
-      acc[status] = (acc[status] || 0) + 1;
-      return acc;
-    }, {});
+    // นับจำนวนตามสถานะ (ใช้ 5 สถานะหลัก)
+    const statusCounts = {
+      'ลูกค้าสนใจสินค้า': 0,
+      'รอชำระเงิน': 0,
+      'ชำระเงินแล้ว': 0,
+      'ส่งมอบสินค้า': 0,
+      'บริการหลังการขาย': 0
+    };
     
-    // คำนวณข้อมูลการขายจำลองตามช่วงวันที่
+    const statusAmounts = {
+      'ลูกค้าสนใจสินค้า': 0,
+      'รอชำระเงิน': 0,
+      'ชำระเงินแล้ว': 0,
+      'ส่งมอบสินค้า': 0,
+      'บริการหลังการขาย': 0
+    };
+    
+    // วิเคราะห์ข้อมูล Status Tracking
+    filteredData.forEach(item => {
+      const status = item.customer_status;
+      const mappedStatus = this.statusMapping[status] || 'ลูกค้าสนใจสินค้า';
+      const amount = (item.product_price || 0) * (item.quantity || 1);
+      
+      statusCounts[mappedStatus]++;
+      statusAmounts[mappedStatus] += amount;
+    });
+    
+    // คำนวณยอดขายรวมและจำนวนการขาย
+    const totalSalesAmount = Object.values(statusAmounts).reduce((sum, amount) => sum + amount, 0);
+    const totalSalesCount = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
+    const averageOrderValue = totalSalesCount > 0 ? Math.round(totalSalesAmount / totalSalesCount) : 0;
+    
+    // คำนวณอัตราการปิดการขาย (จากสนใจเป็นชำระเงินแล้ว)
+    const interestedCount = statusCounts['ลูกค้าสนใจสินค้า'];
+    const paidCount = statusCounts['ชำระเงินแล้ว'];
+    const conversionRate = interestedCount > 0 ? Math.round((paidCount / interestedCount) * 100) : 0;
+    
+    // เป้าหมายยอดขาย (จำลอง)
     const daysDiff = Math.ceil((new Date(this.filters.dateTo) - new Date(this.filters.dateFrom)) / (1000 * 60 * 60 * 24));
-    const daysInMonth = Math.min(daysDiff, 30);
+    const targetAmount = 500000 * (daysDiff / 30); // เป้าหมาย 500k ต่อเดือน
+    const completionRate = Math.min(Math.round((totalSalesAmount / targetAmount) * 100), 100);
     
-    // จำลองข้อมูลการขายตามจำนวนลูกค้า
-    const mockSalesCount = Math.floor(totalCustomers * 0.3) + Math.floor(Math.random() * 10) + 5; // 30% ของลูกค้าซื้อของ + สุ่ม
-    const averageOrderValue = 25000 + Math.floor(Math.random() * 40000); // 25k-65k ต่อออเดอร์
-    const totalRevenue = mockSalesCount * averageOrderValue;
-    const targetAmount = 400000 * (daysInMonth / 30); // เป้าหมายตามสัดส่วนวัน
-    const completionRate = Math.min(Math.floor((totalRevenue / targetAmount) * 100), 100);
-    const conversionRate = Math.min(Math.floor((mockSalesCount / totalCustomers) * 100), 100) || 15;
-    
-    // สร้างข้อมูล Sales Pipeline จากลูกค้าจริง
+    // สร้าง Sales Pipeline Data
     const pipelineData = [
-      { status: 'ลูกค้าสนใจสินค้า', count: customersByStatus.interested || 0, amount: 0 },
-      { status: 'ยืนยันการสั่งซื้อ', count: customersByStatus.purchased || mockSalesCount, amount: totalRevenue },
-      { status: 'รอชำระเงิน', count: Math.floor(mockSalesCount * 0.9), amount: Math.floor(totalRevenue * 0.9) },
-      { status: 'ชำระเงินแล้ว', count: Math.floor(mockSalesCount * 0.85), amount: Math.floor(totalRevenue * 0.85) },
-      { status: 'ส่งมอบสินค้า', count: Math.floor(mockSalesCount * 0.8), amount: Math.floor(totalRevenue * 0.8) },
-      { status: 'บริการหลังการขาย', count: Math.floor(mockSalesCount * 0.7), amount: Math.floor(totalRevenue * 0.7) }
+      { 
+        status: 'ลูกค้าสนใจสินค้า', 
+        count: statusCounts['ลูกค้าสนใจสินค้า'], 
+        amount: statusAmounts['ลูกค้าสนใจสินค้า'] 
+      },
+      { 
+        status: 'รอชำระเงิน', 
+        count: statusCounts['รอชำระเงิน'], 
+        amount: statusAmounts['รอชำระเงิน'] 
+      },
+      { 
+        status: 'ชำระเงินแล้ว', 
+        count: statusCounts['ชำระเงินแล้ว'], 
+        amount: statusAmounts['ชำระเงินแล้ว'] 
+      },
+      { 
+        status: 'ส่งมอบสินค้า', 
+        count: statusCounts['ส่งมอบสินค้า'], 
+        amount: statusAmounts['ส่งมอบสินค้า'] 
+      },
+      { 
+        status: 'บริการหลังการขาย', 
+        count: statusCounts['บริการหลังการขาย'], 
+        amount: statusAmounts['บริการหลังการขาย'] 
+      }
     ];
     
+    // สร้างข้อมูลสินค้าขายดีจากข้อมูลจริง
+    const topProducts = this.calculateTopProductsFromStatusTracking(filteredData);
     
-    // สร้างข้อมูลสินค้าขายดีจากสินค้าจริง
-    const topProducts = this.products.slice(0, 5).map((product, index) => ({
-      id: product.id,
-      name: product.name,
-      unitsSold: Math.floor(Math.random() * 20) + 5 - index,
-      revenue: (Math.floor(Math.random() * 200000) + 50000) - (index * 10000),
-      profitMargin: Math.floor(Math.random() * 20) + 10
-    }));
-    
-    // สร้างข้อมูลกิจกรรมการขายจำลอง
-    const salesActivities = this.generateSalesActivities(mockSalesCount);
+    // สร้างข้อมูลกิจกรรมการขาย
+    const salesActivities = this.generateSalesActivitiesFromStatusTracking(filteredData);
     
     // สร้างข้อมูลยอดขายรายเดือน
-    const salesByMonth = this.generateMonthlySalesData();
+    const salesByMonth = this.generateMonthlySalesFromStatusTracking();
     
     return {
       salesOverview: {
-        totalSales: mockSalesCount,
-        totalAmount: totalRevenue,
+        totalSales: totalSalesCount,
+        totalAmount: totalSalesAmount,
         averageOrderValue: averageOrderValue,
         completionRate: completionRate,
         conversionRate: conversionRate,
@@ -256,96 +351,85 @@ class SalesController {
   }
   
   /**
-   * สร้างข้อมูลกิจกรรมการขายจำลอง
+   * คำนวณสินค้าขายดีจากข้อมูล Status Tracking
    */
-  generateSalesActivities(salesCount) {
-    const activities = [];
-    const statuses = ['สอบถามข้อมูล', 'ส่งใบเสนอราคา', 'ยืนยันการสั่งซื้อ', 'ส่งมอบสินค้า'];
+  calculateTopProductsFromStatusTracking(filteredData) {
+    // สร้าง Map เพื่อรวมข้อมูลสินค้า
+    const productMap = new Map();
     
-    // สร้างกิจกรรมจากลูกค้าจริง
-    const recentCustomers = [...this.customers]
-      .sort((a, b) => new Date(b.created_at || b.updated_at || Date.now()) - new Date(a.created_at || a.updated_at || Date.now()))
-      .slice(0, Math.min(5, salesCount));
-    
-    recentCustomers.forEach((customer, index) => {
-      const randomProduct = this.products[Math.floor(Math.random() * this.products.length)];
-      const activityDate = new Date(Date.now() - (index * 86400000)); // แต่ละวัน
+    filteredData.forEach(item => {
+      const productId = item.product_id;
+      const productName = item.product_name;
+      const quantity = item.quantity || 1;
+      const revenue = (item.product_price || 0) * quantity;
       
-      // เลือกสถานะตามสถานะลูกค้า
-      let status = statuses[0];
-      switch (customer.status) {
-        case 'ลูกค้าสนใจสินค้า': stageClass = 'pipeline-interested'; break;
-        case 'ยืนยันการสั่งซื้อ': stageClass = 'pipeline-confirmed'; break;
-        case 'รอชำระเงิน': stageClass = 'pipeline-payment-pending'; break;
-        case 'ชำระเงินแล้ว': stageClass = 'pipeline-paid'; break;
-        case 'ส่งมอบสินค้า': stageClass = 'pipeline-delivered'; break;
-        case 'บริการหลังการขาย': stageClass = 'pipeline-aftersale'; break;
+      if (productMap.has(productId)) {
+        const existing = productMap.get(productId);
+        existing.unitsSold += quantity;
+        existing.revenue += revenue;
+      } else {
+        productMap.set(productId, {
+          id: productId,
+          name: productName,
+          unitsSold: quantity,
+          revenue: revenue,
+          profitMargin: Math.floor(Math.random() * 20) + 10 // จำลองกำไร
+        });
       }
-      
-      activities.push({
-        id: `SA${Date.now()}_${index}`,
-        date: activityDate.toISOString(),
-        status: status,
-        customerName: customer.name,
-        items: [{
-          productName: randomProduct ? randomProduct.name : 'สินค้าทั่วไป',
-          quantity: Math.floor(Math.random() * 3) + 1
-        }],
-        total: Math.floor(Math.random() * 50000) + 20000
-      });
     });
     
-    // เพิ่มกิจกรรมจำลองถ้าไม่มีลูกค้าเพียงพอ
-    if (activities.length < 3) {
-      const sampleActivities = [
-        {
-          id: 'SA_SAMPLE_1',
-          date: new Date(Date.now() - 86400000).toISOString(),
-          status: 'ยืนยันการสั่งซื้อ',
-          customerName: 'คุณสมศักดิ์ ใจดี',
-          items: [{ productName: 'TV Samsung 55"', quantity: 1 }],
-          total: 45000
-        },
-        {
-          id: 'SA_SAMPLE_2',
-          date: new Date(Date.now() - 172800000).toISOString(),
-          status: 'ส่งใบเสนอราคา',
-          customerName: 'คุณณภา วงศ์ประดิษฐ์',
-          items: [{ productName: 'เครื่องปรับอากาศ', quantity: 2 }],
-          total: 60000
-        },
-        {
-          id: 'SA_SAMPLE_3',
-          date: new Date(Date.now() - 259200000).toISOString(),
-          status: 'สอบถามข้อมูล',
-          customerName: 'คุณประภา เจริญพร',
-          items: [{ productName: 'เครื่องซักผ้า LG', quantity: 1 }],
-          total: 25000
-        }
-      ];
-      
-      activities.push(...sampleActivities.slice(0, 3 - activities.length));
-    }
-    
-    return activities;
+    // แปลงเป็น Array และเรียงลำดับ
+    return Array.from(productMap.values())
+      .sort((a, b) => b.unitsSold - a.unitsSold)
+      .slice(0, 5);
   }
   
   /**
-   * สร้างข้อมูลยอดขายรายเดือน 6 เดือนล่าสุด
+   * สร้างข้อมูลกิจกรรมการขายจาก Status Tracking
    */
-  generateMonthlySalesData() {
+  generateSalesActivitiesFromStatusTracking(filteredData) {
+    // เรียงลำดับตามเวลาล่าสุด
+    const sortedData = [...filteredData]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 10); // แสดง 10 รายการล่าสุด
+    
+    return sortedData.map(item => ({
+      id: item.state_id,
+      date: item.created_at,
+      status: this.statusMapping[item.customer_status] || 'ลูกค้าสนใจสินค้า',
+      customerName: item.customer_name,
+      items: [{
+        productName: item.product_name,
+        quantity: item.quantity || 1
+      }],
+      total: (item.product_price || 0) * (item.quantity || 1),
+      notes: item.notes || ''
+    }));
+  }
+  
+  /**
+   * สร้างข้อมูลยอดขายรายเดือนจาก Status Tracking
+   */
+  generateMonthlySalesFromStatusTracking() {
     const months = [];
     const currentDate = new Date();
     
+    // สร้างข้อมูล 6 เดือนย้อนหลัง
     for (let i = 5; i >= 0; i--) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 1);
       const monthName = this.getThaiMonth(date.getMonth());
       
-      // คำนวณยอดขายจำลองตามจำนวนลูกค้าและเดือน
-      const baseAmount = 200000;
-      const customerFactor = Math.min(this.customers.length * 2000, 100000);
-      const randomFactor = Math.floor(Math.random() * 150000);
-      const monthlyAmount = baseAmount + customerFactor + randomFactor;
+      // กรองข้อมูลตามเดือน
+      const monthlyData = this.statusTrackingData.filter(item => {
+        const itemDate = new Date(item.created_at);
+        return itemDate >= date && itemDate < nextMonth;
+      });
+      
+      // คำนวณยอดขายของเดือน
+      const monthlyAmount = monthlyData.reduce((sum, item) => {
+        return sum + ((item.product_price || 0) * (item.quantity || 1));
+      }, 0);
       
       months.push({
         month: monthName,
@@ -448,7 +532,6 @@ class SalesController {
       let stageClass = '';
       switch (stage.status) {
         case 'ลูกค้าสนใจสินค้า': stageClass = 'pipeline-interested'; break;
-        case 'ยืนยันการสั่งซื้อ': stageClass = 'pipeline-confirmed'; break;
         case 'รอชำระเงิน': stageClass = 'pipeline-payment-pending'; break;
         case 'ชำระเงินแล้ว': stageClass = 'pipeline-paid'; break;
         case 'ส่งมอบสินค้า': stageClass = 'pipeline-delivered'; break;
@@ -484,6 +567,16 @@ class SalesController {
     if (!this.topProductsContainer || !statistics) return;
     
     const topProducts = statistics.topProducts;
+    
+    if (topProducts.length === 0) {
+      this.topProductsContainer.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-box-open"></i>
+          <p>ไม่มีข้อมูลสินค้าขายดีในช่วงเวลาที่เลือก</p>
+        </div>
+      `;
+      return;
+    }
     
     // สร้าง HTML สำหรับตาราง Top Products
     let html = `
@@ -560,12 +653,11 @@ class SalesController {
       // กำหนด CSS class ตามสถานะ
       let statusClass = '';
       switch (sale.status) {
-        case 'ลูกค้าสนใจสินค้า': stageClass = 'pipeline-interested'; break;
-        case 'ยืนยันการสั่งซื้อ': stageClass = 'pipeline-confirmed'; break;
-        case 'รอชำระเงิน': stageClass = 'pipeline-payment-pending'; break;
-        case 'ชำระเงินแล้ว': stageClass = 'pipeline-paid'; break;
-        case 'ส่งมอบสินค้า': stageClass = 'pipeline-delivered'; break;
-        case 'บริการหลังการขาย': stageClass = 'pipeline-aftersale'; break;
+        case 'ลูกค้าสนใจสินค้า': statusClass = 'pipeline-interested'; break;
+        case 'รอชำระเงิน': statusClass = 'pipeline-payment-pending'; break;
+        case 'ชำระเงินแล้ว': statusClass = 'pipeline-paid'; break;
+        case 'ส่งมอบสินค้า': statusClass = 'pipeline-delivered'; break;
+        case 'บริการหลังการขาย': statusClass = 'pipeline-aftersale'; break;
         default: statusClass = ''; break;
       }
       
@@ -577,10 +669,9 @@ class SalesController {
           <div class="timeline-point ${statusClass}"></div>
           <div class="timeline-content">
             <h3>${sale.status}</h3>
-            <p class="timeline-date">${formattedDate}</p>
-            <p class="timeline-customer">ลูกค้า: ${sale.customerName}</p>
             <p class="timeline-items">สินค้า: ${itemsText}</p>
             <p class="timeline-amount">มูลค่า: ฿${sale.total.toLocaleString()}</p>
+            ${sale.notes ? `<p class="timeline-notes">หมายเหตุ: ${sale.notes}</p>` : ''}
             <div class="timeline-actions">
               <button class="btn btn-sm btn-outline" onclick="alert('รายละเอียดการขาย ID: ${sale.id}')">
                 <i class="fas fa-eye"></i> ดูรายละเอียด
