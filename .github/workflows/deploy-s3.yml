@@ -1,0 +1,76 @@
+name: 🚀 Deploy to S3
+
+on:
+  push:
+    branches: [ main, master ]
+    paths: 
+      - '**.html'
+      - 'css/**'
+      - 'js/**'
+      - 'views/**'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: 📦 Deploy Frontend
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name: 🔧 Setup AWS CLI
+      run: |
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+        unzip awscliv2.zip
+        sudo ./aws/install
+        
+    - name: 🔑 Configure AWS Credentials
+      run: |
+        mkdir -p ~/.aws
+        echo "[default]" > ~/.aws/credentials
+        echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/credentials
+        echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
+        echo "aws_session_token=${{ secrets.AWS_SESSION_TOKEN }}" >> ~/.aws/credentials
+        echo "[default]" > ~/.aws/config
+        echo "region=${{ env.AWS_REGION }}" >> ~/.aws/config
+        
+    - name: 🔍 Test AWS Connection
+      run: |
+        echo "Testing AWS connection..."
+        aws sts get-caller-identity
+        echo "Checking bucket access..."
+        aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/
+        
+    - name: 🚀 Deploy to S3
+      run: |
+        echo "Deploying files to S3..."
+        aws s3 sync . s3://${{ secrets.S3_BUCKET_NAME }}/ \
+          --delete \
+          --exclude ".git/*" \
+          --exclude ".github/*" \
+          --exclude "backend/*" \
+          --exclude "node_modules/*" \
+          --exclude "*.md" \
+          --exclude "package*.json"
+          
+    - name: 🏷️ Set Content Types
+      run: |
+        echo "Setting MIME types..."
+        aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/ s3://${{ secrets.S3_BUCKET_NAME }}/ \
+          --recursive --exclude "*" --include "*.html" \
+          --content-type "text/html" --metadata-directive REPLACE
+        aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/ s3://${{ secrets.S3_BUCKET_NAME }}/ \
+          --recursive --exclude "*" --include "*.css" \
+          --content-type "text/css" --metadata-directive REPLACE
+        aws s3 cp s3://${{ secrets.S3_BUCKET_NAME }}/ s3://${{ secrets.S3_BUCKET_NAME }}/ \
+          --recursive --exclude "*" --include "*.js" \
+          --content-type "application/javascript" --metadata-directive REPLACE
+          
+    - name: ✅ Success Message
+      run: |
+        echo "🎉 Deployment completed!"
+        echo "🌐 Website: http://${{ secrets.S3_BUCKET_NAME }}.s3-website-${{ env.AWS_REGION }}.amazonaws.com"
