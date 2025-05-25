@@ -717,6 +717,25 @@
   transition: opacity var(--transition-normal);
 }
 
+.product-model {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0.25rem 0;
+  font-weight: 500;
+}
+
+.product-model::before {
+  content: "🏷️ ";
+  margin-right: 0.25rem;
+}
+
+/* หรือใช้ styling แบบเดียวกับ brand */
+.product-model {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0.25rem 0;
+}
+
 /* ========================================================================
    CONTENT AREA
    ======================================================================== */

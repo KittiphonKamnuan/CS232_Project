@@ -587,94 +587,97 @@ handleDirectSale() {
    this.setupProductEventListeners();
  }
  
- /**
-  * Create product card HTML
-  */
- createProductCard(product) {
-   const imageUrl = product.images && product.images.length > 0 ? product.images[0] : null;
-   const hasDocuments = product.documents && (product.documents.specs || product.documents.manual || product.documents.compare);
-   
-   return `
-     <div class="product-card" data-product-id="${this.escapeHtml(product.id)}">
-       <div class="product-image">
-         ${imageUrl ? `
-           <img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(product.name)}" 
-                onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-           <div class="image-placeholder" style="display: none;">
-             <i class="fas fa-image"></i>
-             <p>ไม่มีรูปภาพ</p>
-           </div>
-         ` : `
-           <div class="image-placeholder">
-             <i class="fas fa-image"></i>
-             <p>ไม่มีรูปภาพ</p>
-           </div>
-         `}
-       </div>
-       
-       <div class="product-info">
-         <h3 class="product-title">
-           <a href="product-details.html?id=${encodeURIComponent(product.id)}">${this.escapeHtml(product.name)}</a>
-         </h3>
-         <p class="product-code">รหัส: ${this.escapeHtml(product.id)}</p>
-<p class="product-brand">ยี่ห้อ: ${this.escapeHtml(product.brand)}</p>
-         
-         <div class="product-stock">
-           <span class="stock-status ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}">
-             ${product.stock > 0 ? 'มีสินค้า' : 'สินค้าหมด'}
-           </span>
-           <span class="stock-count">(เหลือ ${product.stock || 0} ชิ้น)</span>
-         </div>
-         
-         <div class="product-price">
-           <span class="current-price">${window.InfoHubApp ? window.InfoHubApp.formatCurrency(product.price) : '฿' + product.price.toLocaleString()}</span>
-           ${product.originalPrice && product.originalPrice > product.price ? `
-             <span class="original-price">${window.InfoHubApp ? window.InfoHubApp.formatCurrency(product.originalPrice) : '฿' + product.originalPrice.toLocaleString()}</span>
-             <span class="discount-badge">-${product.discount}%</span>
-           ` : ''}
-         </div>
-         
-         <div class="product-delivery">
-           <i class="fas fa-truck"></i>
-           <span>${this.escapeHtml(product.delivery?.estimatedDays || 'ไม่ระบุ')}</span>
-         </div>
-         
-         ${hasDocuments ? `
-           <div class="product-documents">
-             ${product.documents.specs ? `
-               <a href="${this.escapeHtml(product.documents.specs)}" target="_blank" class="doc-link">
-                 <i class="fas fa-file-pdf"></i> สเปค
-               </a>
-             ` : ''}
-             ${product.documents.manual ? `
-               <a href="${this.escapeHtml(product.documents.manual)}" target="_blank" class="doc-link">
-                 <i class="fas fa-file-pdf"></i> คู่มือ
-               </a>
-             ` : ''}
-             ${product.documents.compare ? `
-               <a href="${this.escapeHtml(product.documents.compare)}" target="_blank" class="doc-link">
-                 <i class="fas fa-file-pdf"></i> เปรียบเทียบ
-               </a>
-             ` : ''}
-           </div>
-         ` : ''}
-       </div>
-       
-       <div class="product-actions">
-         <button type="button" class="btn btn-outline product-share" 
-                 data-product-id="${this.escapeHtml(product.id)}"
-                 style="border-color: #6b7280; color: #6b7280;">
-           <i class="fas fa-share-alt"></i> ส่งให้ลูกค้า
-         </button>
-         <button type="button" class="btn btn-outline product-add-status" 
-                 data-product-id="${this.escapeHtml(product.id)}"
-                 style="border-color: #3b82f6; color: #3b82f6;">
-           <i class="fas fa-plus-circle"></i> เพิ่มสถานะ
-         </button>
-       </div>
-     </div>
-   `;
- }
+/**
+ * Create product card HTML
+ */
+createProductCard(product) {
+  const imageUrl = product.images && product.images.length > 0 ? product.images[0] : null;
+  const hasDocuments = product.documents && (product.documents.specs || product.documents.manual || product.documents.compare);
+  
+  return `
+    <div class="product-card" data-product-id="${this.escapeHtml(product.id)}">
+      <div class="product-image">
+        ${imageUrl ? `
+          <img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(product.name)}" 
+               onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <div class="image-placeholder" style="display: none;">
+            <i class="fas fa-image"></i>
+            <p>ไม่มีรูปภาพ</p>
+          </div>
+        ` : `
+          <div class="image-placeholder">
+            <i class="fas fa-image"></i>
+            <p>ไม่มีรูปภาพ</p>
+          </div>
+        `}
+      </div>
+      
+      <div class="product-info">
+        <h3 class="product-title">
+          <a href="product-details.html?id=${encodeURIComponent(product.id)}">${this.escapeHtml(product.name)}</a>
+        </h3>
+        <p class="product-code">รหัส: ${this.escapeHtml(product.id)}</p>
+        <p class="product-brand">ยี่ห้อ: ${this.escapeHtml(product.brand)}</p>
+        
+        <!-- เพิ่มบรรทัดนี้สำหรับ model -->
+        ${product.model ? `<p class="product-model">รุ่น: ${this.escapeHtml(product.model)}</p>` : ''}
+        
+        <div class="product-stock">
+          <span class="stock-status ${product.stock > 0 ? 'in-stock' : 'out-of-stock'}">
+            ${product.stock > 0 ? 'มีสินค้า' : 'สินค้าหมด'}
+          </span>
+          <span class="stock-count">(เหลือ ${product.stock || 0} ชิ้น)</span>
+        </div>
+        
+        <div class="product-price">
+          <span class="current-price">${window.InfoHubApp ? window.InfoHubApp.formatCurrency(product.price) : '฿' + product.price.toLocaleString()}</span>
+          ${product.originalPrice && product.originalPrice > product.price ? `
+            <span class="original-price">${window.InfoHubApp ? window.InfoHubApp.formatCurrency(product.originalPrice) : '฿' + product.originalPrice.toLocaleString()}</span>
+            <span class="discount-badge">-${product.discount}%</span>
+          ` : ''}
+        </div>
+        
+        <div class="product-delivery">
+          <i class="fas fa-truck"></i>
+          <span>${this.escapeHtml(product.delivery?.estimatedDays || 'ไม่ระบุ')}</span>
+        </div>
+        
+        ${hasDocuments ? `
+          <div class="product-documents">
+            ${product.documents.specs ? `
+              <a href="${this.escapeHtml(product.documents.specs)}" target="_blank" class="doc-link">
+                <i class="fas fa-file-pdf"></i> สเปค
+              </a>
+            ` : ''}
+            ${product.documents.manual ? `
+              <a href="${this.escapeHtml(product.documents.manual)}" target="_blank" class="doc-link">
+                <i class="fas fa-file-pdf"></i> คู่มือ
+              </a>
+            ` : ''}
+            ${product.documents.compare ? `
+              <a href="${this.escapeHtml(product.documents.compare)}" target="_blank" class="doc-link">
+                <i class="fas fa-file-pdf"></i> เปรียบเทียบ
+              </a>
+            ` : ''}
+          </div>
+        ` : ''}
+      </div>
+      
+      <div class="product-actions">
+        <button type="button" class="btn btn-outline product-share" 
+                data-product-id="${this.escapeHtml(product.id)}"
+                style="border-color: #6b7280; color: #6b7280;">
+          <i class="fas fa-share-alt"></i> ส่งให้ลูกค้า
+        </button>
+        <button type="button" class="btn btn-outline product-add-status" 
+                data-product-id="${this.escapeHtml(product.id)}"
+                style="border-color: #3b82f6; color: #3b82f6;">
+          <i class="fas fa-plus-circle"></i> เพิ่มสถานะ
+        </button>
+      </div>
+    </div>
+  `;
+}
  
  /**
   * Setup event listeners for product cards
