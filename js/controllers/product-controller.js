@@ -214,12 +214,6 @@ class CompleteProductController {
            <span class="brand-value">${this.escapeHtml(product.brand)}</span>
          </div>
        </div>
-       
-       <div class="product-actions-header">
-          <button class="btn btn-primary btn-large" id="direct-sale-btn">
-            <i class="fas fa-shopping-cart"></i> เพิ่มการขาย
-          </button>
-       </div>
      </div>
      
      <!-- Product Content -->

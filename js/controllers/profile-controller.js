@@ -1,7 +1,7 @@
 /**
  * profile-controller.js
  * Controller สำหรับจัดการข้อมูลโปรไฟล์ผู้ใช้
- * อัปเดตให้ใช้ข้อมูลจริงจาก API และ Cognito User Attributes
+ * อัปเดตให้ใช้ข้อมูลจริงจาก API และ Status Tracking
  */
 
 import dataService from '../services/data-service.js';
@@ -18,12 +18,22 @@ class ProfileController {
     // ตัวแปรเก็บข้อมูลจริงจาก API
     this.customers = [];
     this.products = [];
+    this.statusTrackingData = [];
     
     // ข้อมูลผู้ใช้จาก Cognito
     this.currentUser = this.getCurrentUserFromCognito();
     
     // Elements สำหรับแผนภูมิ
     this.performanceChart = null;
+    
+    // กำหนด 5 สถานะหลัก (เหมือนกับ sales-controller)
+    this.statusMapping = {
+      'สนใจ': 'ลูกค้าสนใจสินค้า',
+      'รอชำระเงิน': 'รอชำระเงิน', 
+      'ชำระเงินแล้ว': 'ชำระเงินแล้ว',
+      'ส่งมอบสินค้า': 'ส่งมอบสินค้า',
+      'บริการหลังการขาย': 'บริการหลังการขาย'
+    };
     
     // Initialize
     this.init();
@@ -140,6 +150,38 @@ class ProfileController {
       });
     }
   }
+
+  /**
+   * แปลงวันที่เป็นรูปแบบไทย
+   */
+  formatThaiDate(date) {
+    const day = date.getDate();
+    const month = this.getThaiMonth(date.getMonth());
+    const year = date.getFullYear() + 543;
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    return `${day} ${month} ${year}, ${hours}:${minutes} น.`;
+  }
+  
+  /**
+   * แปลงเดือนเป็นภาษาไทย
+   */
+  getThaiMonth(month) {
+    const thaiMonths = [
+      'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
+      'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
+    ];
+    return thaiMonths[month];
+  }
+
+  /**
+   * จัดการการดูกิจกรรมทั้งหมด
+   */
+  handleViewMoreActivities() {
+    // เปิดหน้าลูกค้าทั้งหมด
+    window.location.href = 'customer-list.html';
+  }
   
   /**
    * แสดงสถานะกำลังโหลด
@@ -184,6 +226,23 @@ class ProfileController {
   }
   
   /**
+   * ดึงข้อมูล Status Tracking จาก API
+   */
+  async getAllStatusTracking() {
+    try {
+      const response = await fetch('https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetAllStatusTracking');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch status tracking: HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('Error fetching status tracking:', error);
+      throw new Error('ไม่สามารถโหลดข้อมูลสถานะลูกค้าได้');
+    }
+  }
+  
+  /**
    * โหลดข้อมูลจริงจาก API
    */
   async loadRealData() {
@@ -191,16 +250,17 @@ class ProfileController {
       this.showLoading();
       this.hideError();
       
-      // โหลดข้อมูลลูกค้าและสินค้าจาก API จริง
-      const [customersResult, productsResult] = await Promise.allSettled([
+      // โหลดข้อมูลจาก API
+      const [customersResult, productsResult, statusTrackingResult] = await Promise.allSettled([
         dataService.getCustomers(),
-        dataService.getProducts()
+        dataService.getProducts(),
+        this.getAllStatusTracking()
       ]);
       
       // จัดการผลลัพธ์ลูกค้า
       if (customersResult.status === 'fulfilled') {
         this.customers = customersResult.value || [];
-        console.log('Loaded customers:', this.customers.length);
+        console.log('Loaded customers for profile:', this.customers.length);
       } else {
         console.error('Failed to load customers:', customersResult.reason);
         this.customers = [];
@@ -209,10 +269,19 @@ class ProfileController {
       // จัดการผลลัพธ์สินค้า
       if (productsResult.status === 'fulfilled') {
         this.products = productsResult.value || [];
-        console.log('Loaded products:', this.products.length);
+        console.log('Loaded products for profile:', this.products.length);
       } else {
         console.error('Failed to load products:', productsResult.reason);
         this.products = [];
+      }
+      
+      // จัดการผลลัพธ์ Status Tracking
+      if (statusTrackingResult.status === 'fulfilled') {
+        this.statusTrackingData = statusTrackingResult.value || [];
+        console.log('Loaded status tracking data for profile:', this.statusTrackingData.length);
+      } else {
+        console.error('Failed to load status tracking:', statusTrackingResult.reason);
+        this.statusTrackingData = [];
       }
       
       // คำนวณสถิติจากข้อมูลจริง
@@ -231,180 +300,314 @@ class ProfileController {
   }
   
 /**
-   * คำนวณสถิติจากข้อมูลจริง (อัปเดตให้สมจริงขึ้น)
+   * คำนวณสถิติจากข้อมูลจริง Status Tracking เท่านั้น
    */
 calculateStatistics() {
   const totalCustomers = this.customers.length;
   const totalProducts = this.products.length;
   
-  // กรองลูกค้าที่สร้างในเดือนปัจจุบัน
+  // กรองข้อมูล Status Tracking ของเดือนปัจจุบัน
   const currentDate = new Date();
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   
+  const monthlyStatusData = this.statusTrackingData.filter(item => {
+    const itemDate = new Date(item.created_at);
+    return itemDate >= firstDayOfMonth;
+  });
+  
+  // นับจำนวนตามสถานะ (ใช้ 5 สถานะหลัก)
+  const statusCounts = {
+    'ลูกค้าสนใจสินค้า': 0,
+    'รอชำระเงิน': 0,
+    'ชำระเงินแล้ว': 0,
+    'ส่งมอบสินค้า': 0,
+    'บริการหลังการขาย': 0
+  };
+  
+  const statusAmounts = {
+    'ลูกค้าสนใจสินค้า': 0,
+    'รอชำระเงิน': 0,
+    'ชำระเงินแล้ว': 0,
+    'ส่งมอบสินค้า': 0,
+    'บริการหลังการขาย': 0
+  };
+  
+  // วิเคราะห์ข้อมูล Status Tracking จริงเท่านั้น
+  monthlyStatusData.forEach(item => {
+    const status = item.customer_status;
+    const mappedStatus = this.statusMapping[status] || 'ลูกค้าสนใจสินค้า';
+    const amount = (item.product_price || 0) * (item.quantity || 1);
+    
+    statusCounts[mappedStatus]++;
+    statusAmounts[mappedStatus] += amount;
+  });
+  
+  // คำนวณยอดขายรวมและจำนวนการขาย
+  const totalSalesAmount = Object.values(statusAmounts).reduce((sum, amount) => sum + amount, 0);
+  const totalSalesCount = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
+  const averageOrderValue = totalSalesCount > 0 ? Math.round(totalSalesAmount / totalSalesCount) : 0;
+  
+  // คำนวณอัตราการปิดการขาย (จากสนใจเป็นชำระเงินแล้ว)
+  const interestedCount = statusCounts['ลูกค้าสนใจสินค้า'];
+  const paidCount = statusCounts['ชำระเงินแล้ว'];
+  const conversionRate = interestedCount > 0 ? Math.round((paidCount / interestedCount) * 100) : 0;
+  
+  // คำนวณลูกค้าใหม่ในเดือนนี้
   const customersThisMonth = this.customers.filter(customer => {
     const customerDate = new Date(customer.created_at);
     return customerDate >= firstDayOfMonth;
   });
   
-  // นับลูกค้าตามสถานะ
-  const customersByStatus = this.customers.reduce((acc, customer) => {
-    const status = customer.status || 'interested';
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {});
+  // เป้าหมายยอดขาย
+  const targetAmount = 500000; // เป้าหมาย 500k ต่อเดือน
+  const completionRate = totalSalesAmount > 0 ? Math.min(Math.round((totalSalesAmount / targetAmount) * 100), 100) : 0;
   
-  // คำนวณยอดขายโดยใช้ข้อมูลจริงเป็นฐาน
-  let monthlySales, monthlyRevenue, satisfactionRate;
-  
-  if (totalCustomers > 0) {
-    // ใช้ข้อมูลจริงเป็นฐาน
-    monthlySales = Math.max(customersThisMonth.length, Math.floor(totalCustomers * 0.3)); // อย่างน้อย 30% ของลูกค้าทั้งหมด
-    
-    // คำนวณรายได้โดยใช้ข้อมูลลูกค้าจริง
-    const averageOrderValue = 25000 + (totalCustomers * 1000); // เพิ่มค่าเฉลี่ยตามจำนวนลูกค้า
-    monthlyRevenue = monthlySales * averageOrderValue;
-    
-    // อัตราความพึงพอใจตามจำนวนลูกค้า (ยิ่งมีลูกค้ามาก ยิ่งมีประสบการณ์)
-    satisfactionRate = Math.min(90 + Math.floor(totalCustomers / 2), 99);
-  } else {
-    // ถ้าไม่มีข้อมูลลูกค้า ใช้ค่าเริ่มต้นที่สมจริง
-    monthlySales = 8;
-    monthlyRevenue = 200000;
-    satisfactionRate = 92;
+  // อัตราความพึงพอใจ (คำนวณจากประสิทธิภาพการขายจริง)
+  let satisfactionRate = 0;
+  if (totalSalesCount > 0) {
+    // ใช้อัตราการปิดการขายและเปอร์เซ็นต์เป้าหมายเป็นฐาน
+    satisfactionRate = Math.min(70 + Math.floor(conversionRate / 2) + Math.floor(completionRate / 5), 99);
   }
   
   return {
     totalCustomers,
     totalProducts,
     customersThisMonth: customersThisMonth.length,
-    customersByStatus,
-    monthlySales,
-    monthlyRevenue,
-    satisfactionRate,
-    targetAmount: 400000,
-    completionRate: Math.min(Math.floor((monthlyRevenue / 400000) * 100), 100),
-    
-    // เพิ่มสถิติเสริม
-    averageOrderValue: monthlyRevenue > 0 ? Math.floor(monthlyRevenue / monthlySales) : 25000,
+    monthlySales: totalSalesCount,
+    monthlyRevenue: totalSalesAmount,
+    satisfactionRate: satisfactionRate,
+    targetAmount: targetAmount,
+    completionRate: completionRate,
+    averageOrderValue: averageOrderValue,
     newCustomersThisMonth: customersThisMonth.length,
-    conversionRate: totalCustomers > 0 ? Math.floor((monthlySales / totalCustomers) * 100) : 35
+    conversionRate: conversionRate,
+    
+    // รายละเอียดสถานะ
+    statusCounts: statusCounts,
+    statusAmounts: statusAmounts,
+    
+    // สถิติเพิ่มเติม
+    totalStatusRecords: monthlyStatusData.length,
+    averageDealSize: averageOrderValue,
+    successfulDeals: statusCounts['ชำระเงินแล้ว'] + statusCounts['ส่งมอบสินค้า']
   };
 }
 
-/**
- * แสดงสถิติผลงาน (อัปเดตให้แสดงข้อมูลที่สมจริง)
- */
-renderStatistics(statistics) {
-  // แสดงสถิติผลงานในส่วนหัว
-  const statItems = document.querySelectorAll('.stat-item');
-  if (statItems.length >= 3) {
-    // สถิติการขายเดือนนี้
-    const salesValue = statItems[0].querySelector('.stat-value');
-    if (salesValue) salesValue.textContent = statistics.monthlySales;
-    
-    // ยอดขายเดือนนี้
-    const revenueValue = statItems[1].querySelector('.stat-value');
-    if (revenueValue) revenueValue.textContent = `฿${statistics.monthlyRevenue.toLocaleString()}`;
-    
-    // อัตราความพึงพอใจ
-    const satisfactionValue = statItems[2].querySelector('.stat-value');
-    if (satisfactionValue) satisfactionValue.textContent = `${statistics.satisfactionRate}%`;
-  }
-  
-  // อัปเดตเป้าหมายเดือนนี้
-  const progressBars = document.querySelectorAll('.progress-bar');
-  const metricDetails = document.querySelectorAll('.metric-detail');
-  
-  if (progressBars.length >= 1 && metricDetails.length >= 1) {
-    // เป้าหมายเดือนนี้
-    const targetProgress = progressBars[0];
-    const completionRate = statistics.completionRate;
-    targetProgress.style.width = `${completionRate}%`;
-    targetProgress.textContent = `${completionRate}%`;
-    
-    const targetDetail = metricDetails[0];
-    targetDetail.textContent = `฿${statistics.monthlyRevenue.toLocaleString()} จากเป้าหมาย ฿${statistics.targetAmount.toLocaleString()}`;
-  }
-  
-  if (progressBars.length >= 2 && metricDetails.length >= 2) {
-    // อัตราการปิดการขาย
-    const conversionProgress = progressBars[1];
-    const conversionRate = statistics.conversionRate;
-    conversionProgress.style.width = `${conversionRate}%`;
-    conversionProgress.textContent = `${conversionRate}%`;
-    
-    const conversionDetail = metricDetails[1];
-    conversionDetail.textContent = `${statistics.monthlySales} จาก ${statistics.totalCustomers} ลูกค้าทั้งหมด`;
-  }
-  
-  if (progressBars.length >= 3 && metricDetails.length >= 3) {
-    // คะแนนความพึงพอใจลูกค้า
-    const satisfactionProgress = progressBars[2];
-    satisfactionProgress.style.width = `${statistics.satisfactionRate}%`;
-    satisfactionProgress.textContent = `${statistics.satisfactionRate}%`;
-    
-    const satisfactionDetail = metricDetails[2];
-    const reviewCount = Math.max(statistics.monthlySales * 2, 15);
-    const rating = (statistics.satisfactionRate / 100 * 5).toFixed(2);
-    satisfactionDetail.textContent = `${rating}/5.00 จากการประเมิน ${reviewCount} ครั้ง`;
-  }
-  
-  // อัปเดตข้อมูลสรุปลูกค้าจากข้อมูลจริง
-  const summaryCards = document.querySelectorAll('.summary-card');
-  if (summaryCards.length >= 4) {
-    // จำนวนลูกค้าทั้งหมด
-    const totalCustomersCard = summaryCards[0].querySelector('h3');
-    if (totalCustomersCard) {
-      totalCustomersCard.textContent = statistics.totalCustomers || 0;
-    }
-    
-    // จำนวนลูกค้าที่รอติดตาม (interested)
-    const interestedCard = summaryCards[1].querySelector('h3');
-    if (interestedCard) {
-      const interestedCount = statistics.customersByStatus.interested || 0;
-      interestedCard.textContent = interestedCount;
-    }
-    
-    // จำนวนลูกค้าที่ปิดการขายแล้ว
-    const purchasedCard = summaryCards[2].querySelector('h3');
-    if (purchasedCard) {
-      const purchasedCount = (statistics.customersByStatus.confirmed || 0) + 
-                            (statistics.customersByStatus.purchased || 0) +
-                            (statistics.customersByStatus.paid || 0);
-      // ถ้าไม่มีข้อมูลสถานะ ใช้ยอดขายแทน
-      purchasedCard.textContent = purchasedCount > 0 ? purchasedCount : statistics.monthlySales;
-    }
-    
-    // จำนวนลูกค้าประจำ
-    const regularCard = summaryCards[3].querySelector('h3');
-    if (regularCard) {
-      const regularCount = statistics.customersByStatus.regular || 
-                         Math.max(Math.floor(statistics.totalCustomers * 0.2), 2);
-      regularCard.textContent = regularCount;
-    }
-  }
-  
-  // แสดงข้อมูลเพิ่มเติมใน console สำหรับ debug
-  console.log('📊 Statistics Summary:', {
-    totalCustomers: statistics.totalCustomers,
-    monthlySales: statistics.monthlySales,
-    monthlyRevenue: statistics.monthlyRevenue,
-    satisfactionRate: statistics.satisfactionRate,
-    averageOrderValue: statistics.averageOrderValue,
-    newCustomersThisMonth: statistics.newCustomersThisMonth,
-    conversionRate: statistics.conversionRate
-  });
-}
   
   /**
-   * แสดงกิจกรรมล่าสุดจากข้อมูลลูกค้าจริง
+   * แสดงสถิติผลงาน (อัปเดตให้แสดงข้อมูลจาก Status Tracking)
    */
-  renderRecentActivities() {
+  renderStatistics(statistics) {
+    // แสดงสถิติผลงานในส่วนหัว
+    const statItems = document.querySelectorAll('.stat-item');
+    if (statItems.length >= 3) {
+      // สถิติการขายเดือนนี้
+      const salesValue = statItems[0].querySelector('.stat-value');
+      if (salesValue) salesValue.textContent = statistics.monthlySales;
+      
+      // ยอดขายเดือนนี้
+      const revenueValue = statItems[1].querySelector('.stat-value');
+      if (revenueValue) revenueValue.textContent = `฿${statistics.monthlyRevenue.toLocaleString()}`;
+      
+      // อัตราความพึงพอใจ
+      const satisfactionValue = statItems[2].querySelector('.stat-value');
+      if (satisfactionValue) satisfactionValue.textContent = `${statistics.satisfactionRate}%`;
+    }
+    
+    // อัปเดตเป้าหมายเดือนนี้
+    const progressBars = document.querySelectorAll('.progress-bar');
+    const metricDetails = document.querySelectorAll('.metric-detail');
+    
+    if (progressBars.length >= 1 && metricDetails.length >= 1) {
+      // เป้าหมายเดือนนี้
+      const targetProgress = progressBars[0];
+      const completionRate = statistics.completionRate;
+      targetProgress.style.width = `${completionRate}%`;
+      targetProgress.textContent = `${completionRate}%`;
+      
+      const targetDetail = metricDetails[0];
+      targetDetail.textContent = `฿${statistics.monthlyRevenue.toLocaleString()} จากเป้าหมาย ฿${statistics.targetAmount.toLocaleString()}`;
+    }
+    
+    if (progressBars.length >= 2 && metricDetails.length >= 2) {
+      // อัตราการปิดการขาย
+      const conversionProgress = progressBars[1];
+      const conversionRate = statistics.conversionRate;
+      conversionProgress.style.width = `${conversionRate}%`;
+      conversionProgress.textContent = `${conversionRate}%`;
+      
+      const conversionDetail = metricDetails[1];
+      conversionDetail.textContent = `${statistics.successfulDeals} จาก ${statistics.totalStatusRecords} โอกาสการขาย`;
+    }
+    
+    if (progressBars.length >= 3 && metricDetails.length >= 3) {
+      // คะแนนความพึงพอใจลูกค้า
+      const satisfactionProgress = progressBars[2];
+      satisfactionProgress.style.width = `${statistics.satisfactionRate}%`;
+      satisfactionProgress.textContent = `${statistics.satisfactionRate}%`;
+      
+      const satisfactionDetail = metricDetails[2];
+      const reviewCount = Math.max(statistics.monthlySales * 2, 15);
+      const rating = (statistics.satisfactionRate / 100 * 5).toFixed(2);
+      satisfactionDetail.textContent = `${rating}/5.00 จากการประเมิน ${reviewCount} ครั้ง`;
+    }
+    
+    // อัปเดตข้อมูลสรุปลูกค้าจากข้อมูล Status Tracking
+    const summaryCards = document.querySelectorAll('.summary-card');
+    if (summaryCards.length >= 4) {
+      // จำนวนลูกค้าทั้งหมด
+      const totalCustomersCard = summaryCards[0].querySelector('h3');
+      if (totalCustomersCard) {
+        totalCustomersCard.textContent = statistics.totalCustomers || 0;
+      }
+      
+      // จำนวนลูกค้าที่สนใจ
+      const interestedCard = summaryCards[1].querySelector('h3');
+      if (interestedCard) {
+        interestedCard.textContent = statistics.statusCounts['ลูกค้าสนใจสินค้า'] || 0;
+      }
+      
+      // จำนวนลูกค้าที่ปิดการขายแล้ว
+      const purchasedCard = summaryCards[2].querySelector('h3');
+      if (purchasedCard) {
+        const successfulDeals = statistics.successfulDeals;
+        purchasedCard.textContent = successfulDeals;
+      }
+      
+      // จำนวนลูกค้าใหม่เดือนนี้
+      const newCustomersCard = summaryCards[3].querySelector('h3');
+      if (newCustomersCard) {
+        newCustomersCard.textContent = statistics.newCustomersThisMonth;
+      }
+    }
+    
+    // แสดงข้อมูลเพิ่มเติมใน console สำหรับ debug
+    console.log('📊 Profile Statistics Summary:', {
+      totalCustomers: statistics.totalCustomers,
+      monthlySales: statistics.monthlySales,
+      monthlyRevenue: statistics.monthlyRevenue,
+      satisfactionRate: statistics.satisfactionRate,
+      averageOrderValue: statistics.averageOrderValue,
+      newCustomersThisMonth: statistics.newCustomersThisMonth,
+      conversionRate: statistics.conversionRate,
+      statusBreakdown: statistics.statusCounts
+    });
+  }
+  
+   /**
+   * แสดงกิจกรรมล่าสุดจากข้อมูลจริงเท่านั้น
+   */
+   renderRecentActivities() {
     const activityTimeline = document.querySelector('.activity-timeline');
     if (!activityTimeline) return;
     
     // ล้างข้อมูลเดิม
     activityTimeline.innerHTML = '';
+    
+    // ใช้เฉพาะข้อมูล Status Tracking จริง
+    if (this.statusTrackingData.length > 0) {
+      this.renderActivitiesFromStatusTracking();
+    } else {
+      // ถ้าไม่มีข้อมูล Status Tracking ให้ใช้ข้อมูลลูกค้าจริง
+      this.renderActivitiesFromCustomers();
+    }
+  }
+  
+  /**
+   * แสดงกิจกรรมจากข้อมูล Status Tracking จริงเท่านั้น
+   */
+  renderActivitiesFromStatusTracking() {
+    const activityTimeline = document.querySelector('.activity-timeline');
+    
+    // เรียงลำดับตามเวลาล่าสุดและเลือก 5 รายการ
+    const recentActivities = [...this.statusTrackingData]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5);
+    
+    if (recentActivities.length === 0) {
+      activityTimeline.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-history"></i>
+          <p>ไม่มีกิจกรรมในระบบ</p>
+        </div>
+      `;
+      return;
+    }
+    
+    recentActivities.forEach(item => {
+      const activityDate = new Date(item.created_at);
+      const formattedDate = this.formatThaiDate(activityDate);
+      
+      // กำหนดรายละเอียดกิจกรรมตามสถานะ
+      let activityTitle = '';
+      let iconClass = '';
+      let iconName = '';
+      let description = '';
+      
+      const mappedStatus = this.statusMapping[item.customer_status] || 'ลูกค้าสนใจสินค้า';
+      
+      switch (mappedStatus) {
+        case 'ชำระเงินแล้ว':
+          activityTitle = `ปิดการขาย: ${item.product_name}`;
+          iconClass = 'sale';
+          iconName = 'shopping-cart';
+          description = `ลูกค้า: ${item.customer_name} - ฿${(item.product_price * item.quantity).toLocaleString()}`;
+          break;
+        case 'รอชำระเงิน':
+          activityTitle = `รอชำระเงิน: ${item.product_name}`;
+          iconClass = 'payment';
+          iconName = 'clock';
+          description = `ลูกค้า: ${item.customer_name} - จำนวน ${item.quantity} เครื่อง`;
+          break;
+        case 'ส่งมอบสินค้า':
+          activityTitle = `ส่งมอบสินค้า: ${item.product_name}`;
+          iconClass = 'delivery';
+          iconName = 'truck';
+          description = `ลูกค้า: ${item.customer_name} - เสร็จสิ้นการขาย`;
+          break;
+        case 'บริการหลังการขาย':
+          activityTitle = `บริการหลังการขาย: ${item.customer_name}`;
+          iconClass = 'service';
+          iconName = 'headset';
+          description = `สินค้า: ${item.product_name}`;
+          break;
+        case 'ลูกค้าสนใจสินค้า':
+        default:
+          activityTitle = `ลูกค้าสนใจ: ${item.product_name}`;
+          iconClass = 'interested';
+          iconName = 'heart';
+          description = `ลูกค้า: ${item.customer_name} - ${item.customer_tel}`;
+          break;
+      }
+      
+      // สร้าง HTML สำหรับรายการกิจกรรม
+      const activityItem = document.createElement('div');
+      activityItem.className = 'activity-item';
+      activityItem.innerHTML = `
+        <div class="activity-icon ${iconClass}">
+          <i class="fas fa-${iconName}"></i>
+        </div>
+        <div class="activity-content">
+          <h3>${activityTitle}</h3>
+          <p>${description}</p>
+          ${item.notes ? `<p class="activity-notes">หมายเหตุ: ${item.notes}</p>` : ''}
+          <p class="activity-time">${formattedDate}</p>
+        </div>
+      `;
+      
+      activityTimeline.appendChild(activityItem);
+    });
+    
+    console.log('📋 Activities rendered from Status Tracking:', recentActivities.length);
+  }
+
+
+  
+  /**
+   * แสดงกิจกรรมจากข้อมูลลูกค้าจริงเท่านั้น (fallback)
+   */
+  renderActivitiesFromCustomers() {
+    const activityTimeline = document.querySelector('.activity-timeline');
     
     // สร้างกิจกรรมจากลูกค้าที่เพิ่มล่าสุด
     const recentCustomers = [...this.customers]
@@ -412,8 +615,12 @@ renderStatistics(statistics) {
       .slice(0, 5);
     
     if (recentCustomers.length === 0) {
-      // แสดงกิจกรรมตัวอย่างถ้าไม่มีข้อมูลลูกค้า
-      this.renderSampleActivities();
+      activityTimeline.innerHTML = `
+        <div class="empty-state">
+          <i class="fas fa-history"></i>
+          <p>ไม่มีข้อมูลลูกค้าในระบบ</p>
+        </div>
+      `;
       return;
     }
     
@@ -421,40 +628,11 @@ renderStatistics(statistics) {
       const activityDate = new Date(customer.created_at || customer.updated_at || Date.now() - (index * 86400000));
       const formattedDate = this.formatThaiDate(activityDate);
       
-      // สร้างกิจกรรมตามสถานะลูกค้า
-      let activityTitle = '';
-      let iconClass = '';
-      let iconName = '';
-      let description = '';
-      
-      switch (customer.status) {
-        case 'confirmed':
-        case 'purchased':
-          activityTitle = `ปิดการขาย: สินค้าสำหรับ${customer.name}`;
-          iconClass = 'sale';
-          iconName = 'shopping-cart';
-          description = `ลูกค้า: ${customer.name}`;
-          break;
-        case 'quoted':
-          activityTitle = `ส่งใบเสนอราคาให้: ${customer.name}`;
-          iconClass = 'document';
-          iconName = 'file-pdf';
-          description = `เบอร์โทร: ${customer.tel || 'ไม่ระบุ'}`;
-          break;
-        case 'contacted':
-          activityTitle = `โทรหาลูกค้า: ${customer.name}`;
-          iconClass = 'contact';
-          iconName = 'phone';
-          description = `เบอร์โทร: ${customer.tel || 'ไม่ระบุ'}`;
-          break;
-        case 'interested':
-        default:
-          activityTitle = `เพิ่มลูกค้าใหม่: ${customer.name}`;
-          iconClass = 'customer';
-          iconName = 'user-plus';
-          description = `เบอร์โทร: ${customer.tel || 'ไม่ระบุ'}`;
-          break;
-      }
+      // สร้างกิจกรรมจากข้อมูลลูกค้าจริง
+      const activityTitle = `เพิ่มลูกค้าใหม่: ${customer.name}`;
+      const iconClass = 'customer';
+      const iconName = 'user-plus';
+      const description = `เบอร์โทร: ${customer.tel || 'ไม่ระบุ'}`;
       
       // สร้าง HTML สำหรับรายการกิจกรรม
       const activityItem = document.createElement('div');
@@ -473,6 +651,8 @@ renderStatistics(statistics) {
       
       activityTimeline.appendChild(activityItem);
     });
+    
+    console.log('📋 Activities rendered from customers:', recentCustomers.length);
   }
   
   /**
@@ -546,264 +726,218 @@ renderStatistics(statistics) {
     console.log('📋 Sample activities rendered for user:', userName);
   }
   
-  /**
-   * ฟังก์ชันสำหรับรีเฟรชข้อมูลโปรไฟล์ (เพิ่ม notification)
+ /**
+   * สร้างแผนภูมิประสิทธิภาพจากข้อมูลจริงเท่านั้น
    */
-  async refreshProfile() {
-    try {
-      // แสดง loading
-      this.showLoading();
-      
-      // อัปเดตข้อมูลผู้ใช้จาก Cognito
-      this.currentUser = this.getCurrentUserFromCognito();
-      
-      // แสดงข้อมูลผู้ใช้ใหม่
-      this.renderUserProfileInfo();
-      
-      // โหลดข้อมูลจาก API อีกครั้ง
-      await this.loadRealData();
-      
-      // แสดงการแจ้งเตือนว่ารีเฟรชสำเร็จ
-      if (window.InfoHubApp && window.InfoHubApp.showNotification) {
-        window.InfoHubApp.showNotification('รีเฟรชข้อมูลโปรไฟล์เรียบร้อย', 'success');
-      }
-      
-      console.log('✅ Profile refreshed successfully');
-      
-    } catch (error) {
-      console.error('❌ Error refreshing profile:', error);
-      this.showError('ไม่สามารถรีเฟรชข้อมูลได้: ' + error.message);
-    } finally {
-      this.hideLoading();
-    }
-  }
-
-    /**
-   * ฟังก์ชันสำหรับแสดงสถิติแบบรายละเอียด
-   */
-    showDetailedStatistics() {
-      const statistics = this.calculateStatistics();
-      
-      console.log('📊 Detailed Statistics:');
-      console.table({
-        'ลูกค้าทั้งหมด': statistics.totalCustomers,
-        'ลูกค้าเดือนนี้': statistics.newCustomersThisMonth,
-        'การขายเดือนนี้': statistics.monthlySales,
-        'รายได้เดือนนี้': statistics.monthlyRevenue.toLocaleString() + ' บาท',
-        'ค่าเฉลี่ยต่อออร์เดอร์': statistics.averageOrderValue.toLocaleString() + ' บาท',
-        'อัตราแปลงลูกค้า': statistics.conversionRate + '%',
-        'ความพึงพอใจ': statistics.satisfactionRate + '%',
-        'เป้าหมายสำเร็จ': statistics.completionRate + '%'
-      });
-      
-      return statistics;
-    }
+ createPerformanceChart() {
+  const chartCanvas = document.getElementById('performance-chart');
+  if (!chartCanvas) return;
   
-  /**
-   * สร้างแผนภูมิประสิทธิภาพ (ใช้ข้อมูลจริงเป็นฐาน)
-   */
-  createPerformanceChart() {
-    const chartCanvas = document.getElementById('performance-chart');
-    if (!chartCanvas) return;
+  // ตรวจสอบว่ามี Chart.js หรือไม่
+  if (typeof Chart === 'undefined') {
+    console.error('Chart.js is not loaded');
+    return;
+  }
+  
+  // สร้างข้อมูลสำหรับ 6 เดือนล่าสุด
+  const months = [];
+  const salesData = [];
+  const currentDate = new Date();
+  
+  for (let i = 5; i >= 0; i--) {
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - i + 1, 1);
+    months.push(this.getThaiMonth(date.getMonth()));
     
-    // ตรวจสอบว่ามี Chart.js หรือไม่
-    if (typeof Chart === 'undefined') {
-      console.error('Chart.js is not loaded');
-      return;
-    }
+    // กรองข้อมูล Status Tracking ตามเดือน
+    const monthlyData = this.statusTrackingData.filter(item => {
+      const itemDate = new Date(item.created_at);
+      return itemDate >= date && itemDate < nextMonth;
+    });
     
-    // สร้างข้อมูลสำหรับ 6 เดือนล่าสุด
-    const months = [];
-    const salesData = [];
-    const currentDate = new Date();
+    // คำนวณยอดขายของเดือนจากข้อมูลจริงเท่านั้น
+    const monthlyAmount = monthlyData.reduce((sum, item) => {
+      return sum + ((item.product_price || 0) * (item.quantity || 1));
+    }, 0);
     
-    // คำนวณฐานยอดขายจากข้อมูลลูกค้าจริง
-    const baseMonthlySales = Math.max(Math.floor(this.customers.length / 6) * 20000, 150000);
-    
-    for (let i = 5; i >= 0; i--) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      months.push(this.getThaiMonth(date.getMonth()));
-      
-      // สร้างข้อมูลยอดขายที่สมจริงโดยใช้ข้อมูลจริงเป็นฐาน
-      let monthlySales;
-      if (i === 0) {
-        // เดือนปัจจุบัน - ใช้ข้อมูลจริง
-        const statistics = this.calculateStatistics();
-        monthlySales = statistics.monthlyRevenue;
-      } else {
-        // เดือนที่แล้ว - สร้างข้อมูลที่สมจริง
-        const variation = 0.8 + (Math.random() * 0.4); // ความแปรปรวน 80%-120%
-        const growth = 1 + ((5 - i) * 0.02); // เติบโต 2% ต่อเดือน
-        monthlySales = Math.floor(baseMonthlySales * variation * growth);
-      }
-      
-      salesData.push(monthlySales);
-    }
-    
-    // สร้างแผนภูมิ
-    this.performanceChart = new Chart(chartCanvas, {
-      type: 'line',
-      data: {
-        labels: months,
-        datasets: [{
-          label: 'ยอดขาย (บาท)',
-          data: salesData,
-          backgroundColor: 'rgba(54, 162, 235, 0.1)',
-          borderColor: 'rgba(54, 162, 235, 1)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: false
-          },
-          tooltip: {
-            callbacks: {
-              label: function(context) {
-                return 'ยอดขาย: ฿' + context.raw.toLocaleString();
-              }
+    salesData.push(monthlyAmount);
+  }
+  
+  // ถ้าไม่มีข้อมูลเลย แสดงแผนภูมิว่าง
+  const hasData = salesData.some(value => value > 0);
+  
+  // สร้างแผนภูมิ
+  this.performanceChart = new Chart(chartCanvas, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [{
+        label: 'ยอดขาย (บาท)',
+        data: salesData,
+        backgroundColor: hasData ? 'rgba(54, 162, 235, 0.1)' : 'rgba(200, 200, 200, 0.1)',
+        borderColor: hasData ? 'rgba(54, 162, 235, 1)' : 'rgba(200, 200, 200, 1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: hasData ? 'rgba(54, 162, 235, 1)' : 'rgba(200, 200, 200, 1)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.raw > 0 ? 'ยอดขาย: ฿' + context.raw.toLocaleString() : 'ไม่มีข้อมูลยอดขาย';
             }
           }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function(value) {
-                return '฿' + (value / 1000) + 'K';
-              }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return value > 0 ? '฿' + (value / 1000) + 'K' : '฿0';
             }
           }
         }
       }
-    });
-    
-    console.log('📈 Performance Chart Data:', {
-      months: months,
-      salesData: salesData,
-      baseMonthlySales: baseMonthlySales
-    });
-  }
-  
-  /**
-   * จัดการการดูกิจกรรมทั้งหมด
-   */
-  handleViewMoreActivities() {
-    // เปิดหน้าลูกค้าทั้งหมด
-    window.location.href = 'customer-list.html';
-  }
-  
-  /**
-   * แปลงวันที่เป็นรูปแบบไทย
-   */
-  formatThaiDate(date) {
-    const day = date.getDate();
-    const month = this.getThaiMonth(date.getMonth());
-    const year = date.getFullYear() + 543;
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    
-    return `${day} ${month} ${year}, ${hours}:${minutes} น.`;
-  }
-  
-  /**
-   * แปลงเดือนเป็นภาษาไทย
-   */
-  getThaiMonth(month) {
-    const thaiMonths = [
-      'ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.',
-      'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'
-    ];
-    return thaiMonths[month];
-  }
-  
-  /**
-   * ฟังก์ชันสำหรับรีเฟรชข้อมูลโปรไฟล์
-   */
-  async refreshProfile() {
-    // อัปเดตข้อมูลผู้ใช้จาก Cognito
-    this.currentUser = this.getCurrentUserFromCognito();
-    
-    // แสดงข้อมูลผู้ใช้ใหม่
-    this.renderUserProfileInfo();
-    
-    // โหลดข้อมูลจาก API อีกครั้ง
-    await this.loadRealData();
-  }
-  
-  /**
-   * ฟังก์ชันสำหรับอัปเดตข้อมูลผู้ใช้
-   */
-  updateUserInfo(newUserData) {
-    // อัปเดตข้อมูลใน sessionStorage
-    sessionStorage.setItem('infohub_user', JSON.stringify(newUserData));
-    
-    // อัปเดตข้อมูลในคลาส
-    this.currentUser = newUserData;
-    
-    // แสดงข้อมูลใหม่
-    this.renderUserProfileInfo();
-    
-    // อัปเดต UI ในส่วนอื่นๆ
-    if (window.InfoHubAuth && window.InfoHubAuth.updateUserInfoUI) {
-      window.InfoHubAuth.updateUserInfoUI();
     }
+  });
+  
+  console.log('📈 Performance Chart Data (Real Data Only):', {
+    months: months,
+    salesData: salesData,
+    statusTrackingCount: this.statusTrackingData.length,
+    hasRealData: hasData
+  });
+}
+
+/**
+ * ฟังก์ชันสำหรับแสดงสถิติแบบรายละเอียดจากข้อมูลจริงเท่านั้น
+ */
+showDetailedStatistics() {
+  const statistics = this.calculateStatistics();
+  
+  // แสดงเฉพาะข้อมูลที่มีจริง
+  const realDataSummary = {
+    'ลูกค้าทั้งหมด': statistics.totalCustomers,
+    'สินค้าทั้งหมด': statistics.totalProducts,
+    'ข้อมูลสถานะทั้งหมด': statistics.totalStatusRecords,
+    'ลูกค้าเดือนนี้': statistics.newCustomersThisMonth,
+    'การขายเดือนนี้': statistics.monthlySales,
+    'รายได้เดือนนี้': statistics.monthlyRevenue > 0 ? statistics.monthlyRevenue.toLocaleString() + ' บาท' : '0 บาท'
+  };
+  
+  // เพิ่มข้อมูลที่คำนวณได้เฉพาะเมื่อมีข้อมูลจริง
+  if (statistics.monthlyRevenue > 0) {
+    realDataSummary['ค่าเฉลี่ยต่อออร์เดอร์'] = statistics.averageOrderValue.toLocaleString() + ' บาท';
+    realDataSummary['อัตราแปลงลูกค้า'] = statistics.conversionRate + '%';
+    realDataSummary['ความพึงพอใจ'] = statistics.satisfactionRate + '%';
+    realDataSummary['เป้าหมายสำเร็จ'] = statistics.completionRate + '%';
   }
   
-  /**
-   * ฟังก์ชันสำหรับการออกจากระบบ
-   */
-  handleLogout() {
-    // ลบข้อมูลทั้งหมดใน sessionStorage
-    sessionStorage.removeItem('infohub_auth');
-    sessionStorage.removeItem('infohub_access_token');
-    sessionStorage.removeItem('infohub_refresh_token');
-    sessionStorage.removeItem('infohub_user');
-    
-    // เปลี่ยนเส้นทางไปยังหน้าล็อกอิน
-    window.location.href = 'login.html';
+  console.log('📊 Real Data Statistics Only:');
+  console.table(realDataSummary);
+  
+  // แสดงรายละเอียดสถานะเฉพาะที่มีข้อมูล
+  const statusWithData = {};
+  Object.keys(statistics.statusCounts).forEach(status => {
+    if (statistics.statusCounts[status] > 0) {
+      statusWithData[status] = statistics.statusCounts[status];
+    }
+  });
+  
+  if (Object.keys(statusWithData).length > 0) {
+    console.log('📋 Status Breakdown (Real Data Only):');
+    console.table(statusWithData);
+  } else {
+    console.log('📋 No status tracking data found');
   }
   
-  /**
-   * ฟังก์ชันสำหรับได้รับข้อมูลสถิติปัจจุบัน
-   */
-  getCurrentStatistics() {
-    return this.calculateStatistics();
+  return statistics;
+}
+
+/**
+ * วิเคราะห์ประสิทธิภาพจากข้อมูลจริงเท่านั้น
+ */
+analyzePerformance() {
+  const statistics = this.calculateStatistics();
+  
+  const analysis = {
+    hasData: statistics.totalStatusRecords > 0,
+    performance: 'no_data',
+    trends: [],
+    recommendations: []
+  };
+  
+  // ถ้าไม่มีข้อมูล Status Tracking
+  if (!analysis.hasData) {
+    analysis.trends.push('ไม่มีข้อมูลการขายในระบบ');
+    analysis.recommendations.push('เริ่มต้นบันทึกข้อมูลการติดตามลูกค้าและการขาย');
+    
+    // ตรวจสอบข้อมูลลูกค้า
+    if (statistics.totalCustomers > 0) {
+      analysis.trends.push(`มีลูกค้าในระบบ ${statistics.totalCustomers} คน`);
+      analysis.recommendations.push('เริ่มต้นติดตามสถานะของลูกค้าเหล่านี้');
+    } else {
+      analysis.trends.push('ไม่มีข้อมูลลูกค้าในระบบ');
+      analysis.recommendations.push('เริ่มต้นเพิ่มข้อมูลลูกค้าเข้าสู่ระบบ');
+    }
+    
+    console.log('📈 Performance Analysis (No Real Data):', analysis);
+    return analysis;
   }
   
-  /**
-   * ฟังก์ชันสำหรับส่งออกข้อมูลโปรไฟล์
-   */
-  exportProfileData() {
-    const profileData = {
-      user: this.currentUser,
-      statistics: this.getCurrentStatistics(),
-      customers: this.customers.length,
-      products: this.products.length,
-      exportDate: new Date().toISOString()
-    };
-    
-    // สร้างไฟล์ JSON สำหรับดาวน์โหลด
-    const dataStr = JSON.stringify(profileData, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    
-    // สร้างลิงก์ดาวน์โหลด
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `profile-data-${new Date().toISOString().split('T')[0]}.json`;
-    
-    // คลิกลิงก์เพื่อดาวน์โหลด
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  // วิเคราะห์เมื่อมีข้อมูลจริง
+  if (statistics.conversionRate >= 30) {
+    analysis.performance = 'excellent';
+    analysis.trends.push('อัตราการปิดการขายสูงมาก');
+  } else if (statistics.conversionRate >= 20) {
+    analysis.performance = 'good';
+    analysis.trends.push('อัตราการปิดการขายอยู่ในเกณฑ์ดี');
+  } else if (statistics.conversionRate > 0) {
+    analysis.performance = 'needs_improvement';
+    analysis.trends.push('อัตราการปิดการขายต่ำกว่าเกณฑ์');
+    analysis.recommendations.push('ควรปรับปรุงเทคนิคการขายและการติดตามลูกค้า');
   }
+  
+  // วิเคราะห์ยอดขาย
+  if (statistics.completionRate >= 80) {
+    analysis.trends.push('บรรลุเป้าหมายยอดขายได้ดี');
+  } else if (statistics.completionRate >= 60) {
+    analysis.trends.push('ยอดขายใกล้เคียงเป้าหมาย');
+    analysis.recommendations.push('เพิ่มความพยายามในการขายเพื่อบรรลุเป้าหมาย');
+  } else if (statistics.monthlyRevenue > 0) {
+    analysis.trends.push('ยอดขายยังไม่ถึงเป้าหมาย');
+    analysis.recommendations.push('ควรเพิ่มกิจกรรมการขายและหาลูกค้าใหม่');
+  }
+  
+  // วิเคราะห์ลูกค้าใหม่
+  if (statistics.newCustomersThisMonth >= 5) {
+    analysis.trends.push('มีลูกค้าใหม่เพิ่มขึ้นเป็นจำนวนมาก');
+  } else if (statistics.newCustomersThisMonth >= 2) {
+    analysis.trends.push('มีลูกค้าใหม่เพิ่มขึ้นในระดับปานกลาง');
+  } else if (statistics.newCustomersThisMonth >= 1) {
+    analysis.trends.push('มีลูกค้าใหม่เพิ่มขึ้นน้อย');
+    analysis.recommendations.push('ควรเพิ่มกิจกรรมหาลูกค้าใหม่ผ่านช่องทางต่างๆ');
+  } else {
+    analysis.trends.push('ไม่มีลูกค้าใหม่ในเดือนนี้');
+    analysis.recommendations.push('จำเป็นต้องมีแผนหาลูกค้าใหม่อย่างเร่งด่วน');
+  }
+  
+  console.log('📈 Performance Analysis (Real Data):', analysis);
+  return analysis;
+}
+
 }
 
 // สร้าง instance ของ ProfileController เมื่อหน้าเว็บโหลดเสร็จสมบูรณ์
@@ -815,7 +949,9 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshProfile: () => profileController.refreshProfile(),
     updateUserInfo: (userData) => profileController.updateUserInfo(userData),
     getCurrentStatistics: () => profileController.getCurrentStatistics(),
-    exportProfileData: () => profileController.exportProfileData()
+    exportProfileData: () => profileController.exportProfileData(),
+    showDetailedStatistics: () => profileController.showDetailedStatistics(),
+    analyzePerformance: () => profileController.analyzePerformance()
   };
 });
 
