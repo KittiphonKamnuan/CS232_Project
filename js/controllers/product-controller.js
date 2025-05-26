@@ -6,39 +6,119 @@
 import dataService from '../services/data-service.js';
 
 class CompleteProductController {
- constructor() {
-   this.products = [];
-   this.currentSearchParams = {};
-   this.isLoading = false;
-   this.currentProduct = null;
-   
-   // Multi-Select System Properties
-   this.selectedProducts = new Map();
-   this.customers = [];
-   this.isCartVisible = false;
-   
-   this.emailSenderAPI = 'https://w151i393c1.execute-api.us-east-1.amazonaws.com/sender-email';
+  constructor() {
+    this.products = [];
+    this.currentSearchParams = {};
+    this.isLoading = false;
+    this.currentProduct = null;
+    
+    // Multi-Select System Properties
+    this.selectedProducts = new Map();
+    this.customers = [];
+    this.isCartVisible = false;
+    
+    // Session Storage Key
+    this.SESSION_KEY = 'infohub360_selected_products';
+    
+    this.emailSenderAPI = 'https://w151i393c1.execute-api.us-east-1.amazonaws.com/sender-email';
 
-   // Status Options
-   this.statusOptions = [
-     { value: 'สนใจ', label: 'สถานะ 1: ลูกค้าสนใจสินค้า' },
-     { value: 'รอชำระเงิน', label: 'สถานะ 2: รอชำระเงิน' }
-   ];
-   
-   // DOM Elements
-   this.productList = document.getElementById('product-list');
-   this.resultsTitle = document.getElementById('results-title');
-   this.resultsCount = document.getElementById('results-count');
-   this.loadingIndicator = document.getElementById('loading-indicator');
-   this.errorMessage = document.getElementById('error-message');
-   this.emptyState = document.getElementById('empty-state');
-   this.productDetailsContainer = document.getElementById('product-details');
-   
-   // Initialize
-   this.initializePage();
-   this.loadCustomers();
-   this.createCartButton();
- }
+    // Status Options
+    this.statusOptions = [
+      { value: 'สนใจ', label: 'สถานะ 1: ลูกค้าสนใจสินค้า' },
+      { value: 'รอชำระเงิน', label: 'สถานะ 2: รอชำระเงิน' }
+    ];
+    
+    // DOM Elements
+    this.productList = document.getElementById('product-list');
+    this.resultsTitle = document.getElementById('results-title');
+    this.resultsCount = document.getElementById('results-count');
+    this.loadingIndicator = document.getElementById('loading-indicator');
+    this.errorMessage = document.getElementById('error-message');
+    this.emptyState = document.getElementById('empty-state');
+    this.productDetailsContainer = document.getElementById('product-details');
+    
+    // Initialize
+    this.initializePage();
+    this.loadCustomers();
+    this.createCartButton();
+    
+    // Load session data
+    this.loadFromSession();
+  }
+
+    /**
+   * Create cart button (แก้ไข - เพิ่ม session debug)
+   */
+    createCartButton() {
+      if (document.getElementById('sales-clipboard-btn')) return;
+  
+      const cartButton = document.createElement('div');
+      cartButton.id = 'sales-clipboard-btn';
+      cartButton.className = 'sales-clipboard-btn';
+      cartButton.style.cssText = `
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        width: 70px;
+        height: 70px;
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+        z-index: 1000;
+        transition: all 0.3s ease;
+        transform: scale(${this.selectedProducts.size > 0 ? '1' : '0'});
+        opacity: ${this.selectedProducts.size > 0 ? '1' : '0'};
+      `;
+  
+      cartButton.innerHTML = `
+        <div style="position: relative; color: white;">
+          <i class="fas fa-clipboard-list" style="font-size: 1.5rem;"></i>
+          <span id="cart-count" style="
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border: 2px solid white;
+          ">${this.selectedProducts.size}</span>
+        </div>
+      `;
+  
+      document.body.appendChild(cartButton);
+  
+      cartButton.addEventListener('mouseenter', () => {
+        cartButton.style.transform = `scale(${this.selectedProducts.size > 0 ? '1.1' : '0'})`;
+        cartButton.style.boxShadow = '0 15px 35px -5px rgba(59, 130, 246, 0.6)';
+      });
+  
+      cartButton.addEventListener('mouseleave', () => {
+        cartButton.style.transform = `scale(${this.selectedProducts.size > 0 ? '1' : '0'})`;
+        cartButton.style.boxShadow = '0 10px 25px -5px rgba(59, 130, 246, 0.4)';
+      });
+  
+      cartButton.addEventListener('click', () => {
+        this.showMultiSelectModal();
+      });
+      
+      // เพิ่ม double click เพื่อ debug session
+      cartButton.addEventListener('dblclick', () => {
+        this.debugSession();
+      });
+    }
+
+
  
  /**
   * Initialize based on current page
@@ -102,6 +182,8 @@ class CompleteProductController {
      this.customers = [];
    }
  }
+
+
  
  /**
   * Create cart button (clipboard icon)
@@ -387,6 +469,79 @@ class CompleteProductController {
    this.setupImageGallery();
  }
  
+  // ==================== NEW UTILITY METHODS ====================
+  
+  /**
+   * แสดงข้อมูล session ในรูปแบบ modal (สำหรับ admin)
+   */
+  showSessionDebugModal() {
+    try {
+      const sessionData = sessionStorage.getItem(this.SESSION_KEY);
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        font-family: monospace;
+      `;
+      
+      modal.innerHTML = `
+        <div style="
+          background: white;
+          padding: 2rem;
+          border-radius: 1rem;
+          max-width: 80%;
+          max-height: 80%;
+          overflow: auto;
+        ">
+          <h3>Session Debug</h3>
+          <pre style="background: #f5f5f5; padding: 1rem; border-radius: 0.5rem; overflow: auto;">
+${sessionData ? JSON.stringify(JSON.parse(sessionData), null, 2) : 'No session data'}
+          </pre>
+          <button onclick="this.closest('.modal').remove()" style="
+            margin-top: 1rem;
+            padding: 0.5rem 1rem;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 0.25rem;
+            cursor: pointer;
+          ">Close</button>
+        </div>
+      `;
+      
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+      });
+      
+      document.body.appendChild(modal);
+      
+    } catch (error) {
+      console.error('Debug modal error:', error);
+    }
+  }
+  
+  /**
+   * เพิ่มข้อมูลสถิติ session ใน cart button (hover tooltip)
+   */
+  addSessionTooltip() {
+    const cartButton = document.getElementById('sales-clipboard-btn');
+    if (!cartButton) return;
+    
+    const sessionData = sessionStorage.getItem(this.SESSION_KEY);
+    if (!sessionData) return;
+    
+    const parsedData = JSON.parse(sessionData);
+    const age = Math.round((Date.now() - parsedData.timestamp) / 1000 / 60);
+    
+    cartButton.title = `รายการที่เลือก: ${this.selectedProducts.size} รายการ\nบันทึกเมื่อ: ${age} นาทีที่แล้ว\n(Double-click เพื่อ debug)`;
+  }
+
+
  /**
   * Setup event listeners for product details page
   */
@@ -781,45 +936,173 @@ createProductCard(product) {
    });
  }
  
+  // ==================== SESSION STORAGE METHODS ====================
+  
+  /**
+   * บันทึกข้อมูลลง Session Storage
+   */
+  saveToSession() {
+    try {
+      const sessionData = {
+        selectedProducts: Array.from(this.selectedProducts.entries()),
+        timestamp: Date.now()
+      };
+      
+      sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData));
+      console.log('Saved to session:', sessionData.selectedProducts.length, 'items');
+      
+    } catch (error) {
+      console.error('Error saving to session:', error);
+    }
+  }
+  
+  /**
+   * โหลดข้อมูลจาก Session Storage
+   */
+  loadFromSession() {
+    try {
+      const sessionData = sessionStorage.getItem(this.SESSION_KEY);
+      
+      if (!sessionData) {
+        console.log('No session data found');
+        return;
+      }
+      
+      const parsedData = JSON.parse(sessionData);
+      const timestamp = parsedData.timestamp || 0;
+      const currentTime = Date.now();
+      const maxAge = 24 * 60 * 60 * 1000; // 24 ชั่วโมง
+      
+      // ตรวจสอบว่าข้อมูลหมดอายุหรือยัง
+      if (currentTime - timestamp > maxAge) {
+        console.log('Session data expired, clearing...');
+        this.clearSession();
+        return;
+      }
+      
+      // โหลดข้อมูลกลับมา
+      if (parsedData.selectedProducts && Array.isArray(parsedData.selectedProducts)) {
+        this.selectedProducts = new Map(parsedData.selectedProducts);
+        console.log('Loaded from session:', this.selectedProducts.size, 'items');
+        
+        // อัปเดต UI
+        this.updateCartButton();
+        
+        // แสดงข้อความแจ้งเตือน
+        if (this.selectedProducts.size > 0) {
+          setTimeout(() => {
+            if (window.InfoHubApp) {
+              window.InfoHubApp.showNotification(
+                `กู้คืนรายการสินค้าที่เลือกไว้ ${this.selectedProducts.size} รายการ`, 
+                'info'
+              );
+            }
+          }, 1000);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error loading from session:', error);
+      this.clearSession();
+    }
+  }
+  
+  /**
+   * ล้างข้อมูล Session Storage
+   */
+  clearSession() {
+    try {
+      sessionStorage.removeItem(this.SESSION_KEY);
+      console.log('Session cleared');
+    } catch (error) {
+      console.error('Error clearing session:', error);
+    }
+  }
+  
+  /**
+   * แสดงสถานะ Session ใน Console (สำหรับ Debug)
+   */
+  debugSession() {
+    try {
+      const sessionData = sessionStorage.getItem(this.SESSION_KEY);
+      if (sessionData) {
+        const parsedData = JSON.parse(sessionData);
+        console.log('=== SESSION DEBUG ===');
+        console.log('Items count:', parsedData.selectedProducts?.length || 0);
+        console.log('Timestamp:', new Date(parsedData.timestamp));
+        console.log('Age:', Math.round((Date.now() - parsedData.timestamp) / 1000 / 60), 'minutes');
+        console.log('Raw data:', parsedData);
+      } else {
+        console.log('=== SESSION DEBUG ===');
+        console.log('No session data');
+      }
+    } catch (error) {
+      console.error('Session debug error:', error);
+    }
+  }
+
  // ==================== MULTI-SELECT SYSTEM ====================
  
- /**
-  * Select product for multi-select
-  */
- async selectProduct(productId) {
-   try {
-     if (this.selectedProducts.has(productId)) return;
+  /**
+   * Select product for multi-select (แก้ไข - เพิ่ม save session)
+   */
+  async selectProduct(productId) {
+    try {
+      if (this.selectedProducts.has(productId)) return;
 
-     const product = await dataService.getProductById(productId);
-     
-     this.selectedProducts.set(productId, {
-       ...product,
-       quantity: 1,
-       status: 'สนใจ',
-       notes: ''
-     });
+      const product = await dataService.getProductById(productId);
+      
+      this.selectedProducts.set(productId, {
+        ...product,
+        quantity: 1,
+        status: 'สนใจ',
+        notes: ''
+      });
 
-     this.updateCartButton();
-     this.highlightSelectedCard(productId, true);
-     
-     if (window.InfoHubApp) {
-       window.InfoHubApp.showNotification(`เพิ่ม "${product.name}" ในรายการแล้ว`, 'success');
-     }
+      // บันทึกลง session
+      this.saveToSession();
+      
+      this.updateCartButton();
+      this.highlightSelectedCard(productId, true);
+      
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(`เพิ่ม "${product.name}" ในรายการแล้ว`, 'success');
+      }
 
-   } catch (error) {
-     console.error('Error selecting product:', error);
-     throw error;
-   }
- }
+    } catch (error) {
+      console.error('Error selecting product:', error);
+      throw error;
+    }
+  }
  
- /**
-  * Initialize selection system
-  */
- initializeSelectionSystem() {
-   this.addSelectionStyles();
-   this.addSelectionToProductCards();
-   this.setupProductCardObserver();
- }
+  /**
+   * Initialize selection system (แก้ไข - เช็ค session)
+   */
+  initializeSelectionSystem() {
+    this.addSelectionStyles();
+    this.addSelectionToProductCards();
+    this.setupProductCardObserver();
+    
+    // หลังจากโหลด UI เสร็จ ให้ highlight การ์ดที่เลือกไว้ใน session
+    setTimeout(() => {
+      this.restoreSelectionHighlights();
+    }, 500);
+  }
+
+    /**
+   * กู้คืน highlight ของการ์ดที่เลือกไว้
+   */
+    restoreSelectionHighlights() {
+      this.selectedProducts.forEach((product, productId) => {
+        const checkbox = document.querySelector(`[data-product-id="${productId}"].product-select-checkbox`);
+        if (checkbox) {
+          checkbox.checked = true;
+        }
+        this.highlightSelectedCard(productId, true);
+      });
+      
+      console.log('Restored highlights for', this.selectedProducts.size, 'products');
+    }
  
  /**
   * Add selection checkboxes to product cards
@@ -873,22 +1156,25 @@ createProductCard(product) {
    });
  }
  
- /**
-  * Deselect product
-  */
- deselectProduct(productId) {
-   if (!this.selectedProducts.has(productId)) return;
+  /**
+   * Deselect product (แก้ไข - เพิ่ม save session)
+   */
+  deselectProduct(productId) {
+    if (!this.selectedProducts.has(productId)) return;
 
-   const product = this.selectedProducts.get(productId);
-   this.selectedProducts.delete(productId);
+    const product = this.selectedProducts.get(productId);
+    this.selectedProducts.delete(productId);
 
-   this.updateCartButton();
-   this.highlightSelectedCard(productId, false);
+    // บันทึกลง session
+    this.saveToSession();
+    
+    this.updateCartButton();
+    this.highlightSelectedCard(productId, false);
 
-   if (window.InfoHubApp) {
-     window.InfoHubApp.showNotification(`ลบ "${product.name}" ออกจากรายการแล้ว`, 'info');
-   }
- }
+    if (window.InfoHubApp) {
+      window.InfoHubApp.showNotification(`ลบ "${product.name}" ออกจากรายการแล้ว`, 'info');
+    }
+  }
  
  /**
   * Highlight selected card
@@ -1539,49 +1825,42 @@ setupProductControls(modal) {
 
 
 
-/**
- * Update product quantity with stock validation
- */
-updateProductQuantity(productId, quantity, modal) {
+ /**
+   * Update product quantity (แก้ไข - เพิ่ม save session)
+   */
+ updateProductQuantity(productId, quantity, modal) {
   if (this.selectedProducts.has(productId)) {
     const product = this.selectedProducts.get(productId);
     const maxStock = product.stock || 0;
     
-    // ตรวจสอบว่าจำนวนที่ต้องการมากกว่า stock หรือไม่
     if (quantity > maxStock) {
-      // แสดงเตือนและ reset ค่าไปเป็น stock สูงสุด
       const quantityInput = modal.querySelector(`input.quantity-input[data-product-id="${productId}"]`);
       if (quantityInput) {
         quantityInput.value = maxStock;
-        // เพิ่มสีแดงเพื่อเตือน
         quantityInput.style.borderColor = '#ef4444';
         quantityInput.style.backgroundColor = '#fef2f2';
         
-        // เอาสีแดงออกหลังจาก 3 วินาที
         setTimeout(() => {
           quantityInput.style.borderColor = '#d1d5db';
           quantityInput.style.backgroundColor = 'white';
         }, 3000);
       }
       
-      // แสดงข้อความเตือน
       if (window.InfoHubApp) {
         window.InfoHubApp.showNotification(
           `จำนวนสินค้า "${product.name}" ไม่สามารถเกิน ${maxStock} ชิ้นได้ (คงเหลือ ${maxStock} ชิ้น)`, 
           'warning'
         );
-      } else {
-        alert(`จำนวนสินค้า "${product.name}" ไม่สามารถเกิน ${maxStock} ชิ้นได้\nคงเหลือ ${maxStock} ชิ้น`);
       }
       
-      // ใช้ค่า stock สูงสุดแทน
       quantity = maxStock;
     }
     
-    // อัปเดตจำนวนจริง
     product.quantity = Math.max(1, quantity);
     
-    // Update item total display
+    // บันทึกลง session
+    this.saveToSession();
+    
     const itemTotalElement = modal.querySelector(`[data-product-id="${productId}"]`).closest('.selected-product-item').querySelector('.item-total');
     if (itemTotalElement) {
       itemTotalElement.textContent = this.formatCurrency(product.price * product.quantity);
@@ -1591,29 +1870,35 @@ updateProductQuantity(productId, quantity, modal) {
   }
 }
 
-/**
- * Update product status
- */
-updateProductStatus(productId, status) {
-  if (this.selectedProducts.has(productId)) {
-    const product = this.selectedProducts.get(productId);
-    product.status = status;
+  /**
+   * Update product status (แก้ไข - เพิ่ม save session)
+   */
+  updateProductStatus(productId, status) {
+    if (this.selectedProducts.has(productId)) {
+      const product = this.selectedProducts.get(productId);
+      product.status = status;
+      
+      // บันทึกลง session
+      this.saveToSession();
+    }
   }
-}
+  
+  /**
+   * Update product notes (แก้ไข - เพิ่ม save session)
+   */
+  updateProductNotes(productId, notes) {
+    if (this.selectedProducts.has(productId)) {
+      const product = this.selectedProducts.get(productId);
+      product.notes = notes;
+      
+      // บันทึกลง session
+      this.saveToSession();
+    }
+  }
 
 /**
- * Update product notes
- */
-updateProductNotes(productId, notes) {
-  if (this.selectedProducts.has(productId)) {
-    const product = this.selectedProducts.get(productId);
-    product.notes = notes;
-  }
-}
-
-/**
- * Remove product from modal
- */
+   * Remove product from modal (แก้ไข - เพิ่ม save session)
+   */
 removeProductFromModal(productId, modal) {
   if (!this.selectedProducts.has(productId)) return;
 
@@ -1625,6 +1910,9 @@ removeProductFromModal(productId, modal) {
 
   this.selectedProducts.delete(productId);
 
+  // บันทึกลง session
+  this.saveToSession();
+  
   const checkbox = document.querySelector(`[data-product-id="${productId}"].product-select-checkbox`);
   if (checkbox) {
     checkbox.checked = false;
@@ -1650,7 +1938,7 @@ removeProductFromModal(productId, modal) {
 }
 
 /**
- * Handle clear all
+ * Handle clear all (แก้ไข - เพิ่ม save session)
  */
 handleClearAll(modal) {
   if (this.selectedProducts.size === 0) return;
@@ -1669,6 +1957,10 @@ handleClearAll(modal) {
   });
 
   this.selectedProducts.clear();
+  
+  // บันทึกลง session
+  this.saveToSession();
+  
   this.updateCartButton();
   this.closeMultiSelectModal(modal);
 
@@ -2167,21 +2459,26 @@ showStatusSuccess(modal, salesData, customer) {
   }, 15000);
 }
 
-/**
- * Clear all selections
- */
-clearAllSelections() {
-  this.selectedProducts.forEach((product, productId) => {
-    const checkbox = document.querySelector(`[data-product-id="${productId}"].product-select-checkbox`);
-    if (checkbox) {
-      checkbox.checked = false;
-    }
-    this.highlightSelectedCard(productId, false);
-  });
+  /**
+   * Clear all selections (แก้ไข - เพิ่ม save session)
+   */
+  clearAllSelections() {
+    this.selectedProducts.forEach((product, productId) => {
+      const checkbox = document.querySelector(`[data-product-id="${productId}"].product-select-checkbox`);
+      if (checkbox) {
+        checkbox.checked = false;
+      }
+      this.highlightSelectedCard(productId, false);
+    });
 
-  this.selectedProducts.clear();
-  this.updateCartButton();
-}
+    this.selectedProducts.clear();
+    
+    // บันทึกลง session
+    this.saveToSession();
+    
+    this.updateCartButton();
+  }
+
 
 /**
  * Update summary in modal
@@ -2737,6 +3034,26 @@ isValidEmail(email) {
   return emailRegex.test(email);
 }
  
+
+  // ==================== LIFECYCLE METHODS ====================
+  
+  /**
+   * เรียกใช้เมื่อออกจากหน้า
+   */
+  onBeforeUnload() {
+    this.saveToSession();
+    console.log('Saved session before page unload');
+  }
+  
+  /**
+   * เรียกใช้เมื่อเข้าหน้าใหม่
+   */
+  onPageLoad() {
+    this.loadFromSession();
+    this.addSessionTooltip();
+    console.log('Loaded session on page load');
+  }
+  
  /**
   * Setup observer for new product cards
   */
@@ -2917,7 +3234,24 @@ isValidEmail(email) {
  }
 }
 
+// เพิ่ม event listener สำหรับ beforeunload 
+window.addEventListener('beforeunload', () => {
+  if (window.completeProductController) {
+    window.completeProductController.onBeforeUnload();
+  }
+});
+
+// เพิ่ม event listener สำหรับ pageshow (รวมถึงการกลับมาจาก back button)
+window.addEventListener('pageshow', (event) => {
+  if (window.completeProductController) {
+    window.completeProductController.onPageLoad();
+  }
+});
+
 // Initialize complete product controller
 const completeProductController = new CompleteProductController();
+
+// Make it globally accessible
+window.completeProductController = completeProductController;
 
 export default completeProductController;
