@@ -1184,6 +1184,30 @@ p {
   margin: 0;
 }
 
+.notification-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: color 0.2s ease-in-out;
+  z-index: 10;
+}
+
+.notification-close:hover {
+  color: #ef4444; /* สีแดงเมื่อ hover */
+}
+
+.notification-close:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #fca5a5;
+}
+
+
 .modal-close {
   background: transparent;
   border: none;

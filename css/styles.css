@@ -877,6 +877,42 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* เพิ่ม CSS นี้ใน addSelectionStyles() method */
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stock-warning {
+  animation: slideDown 0.2s ease !important;
+}
+
+/* Highlight สำหรับ input ที่มีปัญหา */
+.quantity-input.error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+/* Style สำหรับ stock warning */
+.stock-warning {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.stock-warning i {
+  font-size: 0.875rem;
+}
+
 /* ========================================================================
    PAGINATION
    ======================================================================== */

@@ -1441,16 +1441,56 @@ setupMultiSelectModalListeners(modal) {
 }
 
 /**
- * Setup product controls in modal
+ * Setup product controls in modal with enhanced stock validation
  */
 setupProductControls(modal) {
-  // Quantity inputs
+  // Quantity inputs with real-time validation
   const quantityInputs = modal.querySelectorAll('.quantity-input');
   quantityInputs.forEach(input => {
+    const productId = input.getAttribute('data-product-id');
+    const product = this.selectedProducts.get(productId);
+    const maxStock = product ? product.stock || 0 : 0;
+    
+    // Set max attribute
+    input.setAttribute('max', maxStock);
+    
+    // Input event (while typing)
     input.addEventListener('input', (e) => {
-      const productId = input.getAttribute('data-product-id');
+      const quantity = parseInt(input.value) || 1;
+      
+      // Real-time validation ขณะพิมพ์
+      if (quantity > maxStock) {
+        input.style.borderColor = '#ef4444';
+        input.style.backgroundColor = '#fef2f2';
+        
+        // แสดงข้อความเตือนข้างช่อง input
+        this.showStockWarning(input, product.name, maxStock);
+      } else {
+        input.style.borderColor = '#d1d5db';
+        input.style.backgroundColor = 'white';
+        this.hideStockWarning(input);
+      }
+    });
+    
+    // Change event (เมื่อเสร็จสิ้นการแก้ไข)
+    input.addEventListener('change', (e) => {
       const quantity = parseInt(input.value) || 1;
       this.updateProductQuantity(productId, quantity, modal);
+    });
+    
+    // Blur event (เมื่อออกจากช่อง input)
+    input.addEventListener('blur', (e) => {
+      const quantity = parseInt(input.value) || 1;
+      const maxStock = product ? product.stock || 0 : 0;
+      
+      // ถ้าค่าไม่ถูกต้อง ให้ fix เป็นค่าที่ถูกต้อง
+      if (quantity > maxStock) {
+        input.value = maxStock;
+        this.updateProductQuantity(productId, maxStock, modal);
+      } else if (quantity < 1) {
+        input.value = 1;
+        this.updateProductQuantity(productId, 1, modal);
+      }
     });
   });
 
@@ -1497,13 +1537,49 @@ setupProductControls(modal) {
   });
 }
 
+
+
 /**
- * Update product quantity
+ * Update product quantity with stock validation
  */
 updateProductQuantity(productId, quantity, modal) {
   if (this.selectedProducts.has(productId)) {
     const product = this.selectedProducts.get(productId);
-    product.quantity = Math.max(1, Math.min(quantity, product.stock));
+    const maxStock = product.stock || 0;
+    
+    // ตรวจสอบว่าจำนวนที่ต้องการมากกว่า stock หรือไม่
+    if (quantity > maxStock) {
+      // แสดงเตือนและ reset ค่าไปเป็น stock สูงสุด
+      const quantityInput = modal.querySelector(`input.quantity-input[data-product-id="${productId}"]`);
+      if (quantityInput) {
+        quantityInput.value = maxStock;
+        // เพิ่มสีแดงเพื่อเตือน
+        quantityInput.style.borderColor = '#ef4444';
+        quantityInput.style.backgroundColor = '#fef2f2';
+        
+        // เอาสีแดงออกหลังจาก 3 วินาที
+        setTimeout(() => {
+          quantityInput.style.borderColor = '#d1d5db';
+          quantityInput.style.backgroundColor = 'white';
+        }, 3000);
+      }
+      
+      // แสดงข้อความเตือน
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(
+          `จำนวนสินค้า "${product.name}" ไม่สามารถเกิน ${maxStock} ชิ้นได้ (คงเหลือ ${maxStock} ชิ้น)`, 
+          'warning'
+        );
+      } else {
+        alert(`จำนวนสินค้า "${product.name}" ไม่สามารถเกิน ${maxStock} ชิ้นได้\nคงเหลือ ${maxStock} ชิ้น`);
+      }
+      
+      // ใช้ค่า stock สูงสุดแทน
+      quantity = maxStock;
+    }
+    
+    // อัปเดตจำนวนจริง
+    product.quantity = Math.max(1, quantity);
     
     // Update item total display
     const itemTotalElement = modal.querySelector(`[data-product-id="${productId}"]`).closest('.selected-product-item').querySelector('.item-total');
@@ -1602,13 +1678,218 @@ handleClearAll(modal) {
 }
 
 /**
- * Handle save all statuses
+ * Update product quantity with stock validation
  */
+updateProductQuantity(productId, quantity, modal) {
+  if (this.selectedProducts.has(productId)) {
+    const product = this.selectedProducts.get(productId);
+    const maxStock = product.stock || 0;
+    
+    // ตรวจสอบว่าจำนวนที่ต้องการมากกว่า stock หรือไม่
+    if (quantity > maxStock) {
+      // แสดงเตือนและ reset ค่าไปเป็น stock สูงสุด
+      const quantityInput = modal.querySelector(`input.quantity-input[data-product-id="${productId}"]`);
+      if (quantityInput) {
+        quantityInput.value = maxStock;
+        // เพิ่มสีแดงเพื่อเตือน
+        quantityInput.style.borderColor = '#ef4444';
+        quantityInput.style.backgroundColor = '#fef2f2';
+        
+        // เอาสีแดงออกหลังจาก 3 วินาที
+        setTimeout(() => {
+          quantityInput.style.borderColor = '#d1d5db';
+          quantityInput.style.backgroundColor = 'white';
+        }, 3000);
+      }
+      
+      // แสดงข้อความเตือน
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(
+          `จำนวนสินค้า "${product.name}" ไม่สามารถเกิน ${maxStock} ชิ้นได้ (คงเหลือ ${maxStock} ชิ้น)`, 
+          'warning'
+        );
+      } else {
+        alert(`จำนวนสินค้า "${product.name}" ไม่สามารถเกิน ${maxStock} ชิ้นได้\nคงเหลือ ${maxStock} ชิ้น`);
+      }
+      
+      // ใช้ค่า stock สูงสุดแทน
+      quantity = maxStock;
+    }
+    
+    // อัปเดตจำนวนจริง
+    product.quantity = Math.max(1, quantity);
+    
+    // Update item total display
+    const itemTotalElement = modal.querySelector(`[data-product-id="${productId}"]`).closest('.selected-product-item').querySelector('.item-total');
+    if (itemTotalElement) {
+      itemTotalElement.textContent = this.formatCurrency(product.price * product.quantity);
+    }
+
+    this.updateSummary(modal);
+  }
+}
+
 /**
-   * Handle save all statuses in the new format
-   */
+ * Setup product controls in modal with enhanced stock validation
+ */
+setupProductControls(modal) {
+  // Quantity inputs with real-time validation
+  const quantityInputs = modal.querySelectorAll('.quantity-input');
+  quantityInputs.forEach(input => {
+    const productId = input.getAttribute('data-product-id');
+    const product = this.selectedProducts.get(productId);
+    const maxStock = product ? product.stock || 0 : 0;
+    
+    // Set max attribute
+    input.setAttribute('max', maxStock);
+    
+    // Input event (while typing)
+    input.addEventListener('input', (e) => {
+      const quantity = parseInt(input.value) || 1;
+      
+      // Real-time validation ขณะพิมพ์
+      if (quantity > maxStock) {
+        input.style.borderColor = '#ef4444';
+        input.style.backgroundColor = '#fef2f2';
+        
+        // แสดงข้อความเตือนข้างช่อง input
+        this.showStockWarning(input, product.name, maxStock);
+      } else {
+        input.style.borderColor = '#d1d5db';
+        input.style.backgroundColor = 'white';
+        this.hideStockWarning(input);
+      }
+    });
+    
+    // Change event (เมื่อเสร็จสิ้นการแก้ไข)
+    input.addEventListener('change', (e) => {
+      const quantity = parseInt(input.value) || 1;
+      this.updateProductQuantity(productId, quantity, modal);
+    });
+    
+    // Blur event (เมื่อออกจากช่อง input)
+    input.addEventListener('blur', (e) => {
+      const quantity = parseInt(input.value) || 1;
+      const maxStock = product ? product.stock || 0 : 0;
+      
+      // ถ้าค่าไม่ถูกต้อง ให้ fix เป็นค่าที่ถูกต้อง
+      if (quantity > maxStock) {
+        input.value = maxStock;
+        this.updateProductQuantity(productId, maxStock, modal);
+      } else if (quantity < 1) {
+        input.value = 1;
+        this.updateProductQuantity(productId, 1, modal);
+      }
+    });
+  });
+
+  // Status selects
+  const statusSelects = modal.querySelectorAll('.status-select');
+  statusSelects.forEach(select => {
+    select.addEventListener('change', (e) => {
+      const productId = select.getAttribute('data-product-id');
+      const status = select.value;
+      this.updateProductStatus(productId, status);
+    });
+  });
+
+  // Notes inputs
+  const notesInputs = modal.querySelectorAll('.notes-input');
+  notesInputs.forEach(input => {
+    input.addEventListener('input', (e) => {
+      const productId = input.getAttribute('data-product-id');
+      const notes = input.value;
+      this.updateProductNotes(productId, notes);
+    });
+  });
+
+  // Remove buttons
+  const removeButtons = modal.querySelectorAll('.remove-product-btn');
+  removeButtons.forEach(button => {
+    button.addEventListener('click', (e) => {
+      const productId = button.getAttribute('data-product-id');
+      this.removeProductFromModal(productId, modal);
+    });
+
+    // Hover effects
+    button.addEventListener('mouseenter', () => {
+      button.style.background = '#fee2e2';
+      button.style.borderColor = '#fca5a5';
+      button.style.transform = 'scale(1.1)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+      button.style.background = '#fef2f2';
+      button.style.borderColor = '#fecaca';
+      button.style.transform = 'scale(1)';
+    });
+  });
+}
+
+/**
+ * Show stock warning message near input
+ */
+showStockWarning(input, productName, maxStock) {
+  // ลบ warning เดิมก่อน (ถ้ามี)
+  this.hideStockWarning(input);
+  
+  const warningDiv = document.createElement('div');
+  warningDiv.className = 'stock-warning';
+  warningDiv.style.cssText = `
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-top: none;
+    border-radius: 0 0 0.5rem 0.5rem;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    color: #dc2626;
+    z-index: 1000;
+    animation: slideDown 0.2s ease;
+  `;
+  
+  warningDiv.innerHTML = `
+    <i class="fas fa-exclamation-triangle"></i>
+    คงเหลือเพียง ${maxStock} ชิ้น
+  `;
+  
+  // ทำให้ parent เป็น relative position
+  input.parentElement.style.position = 'relative';
+  input.parentElement.appendChild(warningDiv);
+}
+
+/**
+ * Hide stock warning message
+ */
+hideStockWarning(input) {
+  const existingWarning = input.parentElement.querySelector('.stock-warning');
+  if (existingWarning) {
+    existingWarning.remove();
+  }
+}
+
+/**
+ * Enhanced validation before saving all statuses
+ */
 async handleSaveAll(modal) {
   try {
+    // ตรวจสอบ stock ก่อนบันทึก
+    const stockValidationResult = this.validateAllStock();
+    if (!stockValidationResult.isValid) {
+      if (window.InfoHubApp) {
+        window.InfoHubApp.showNotification(
+          `ไม่สามารถบันทึกได้: ${stockValidationResult.message}`, 
+          'error'
+        );
+      } else {
+        alert(`ไม่สามารถบันทึกได้: ${stockValidationResult.message}`);
+      }
+      return;
+    }
+
     const saveBtn = modal.querySelector('.save-all-btn');
     const originalContent = saveBtn.innerHTML;
 
@@ -1646,7 +1927,6 @@ async handleSaveAll(modal) {
 
     console.log('Submitting payload:', payload);
 
-    // ✅ ใช้ dataService ที่มี createStatusTracking
     await dataService.createStatusTracking(payload.items);
 
     this.showStatusSuccess(modal, payload.items, selectedCustomer);
@@ -1674,6 +1954,40 @@ async submitStatusData(statusData) {
     },
     body: JSON.stringify(statusData)
   });
+}
+
+/**
+ * Validate all selected products' stock
+ */
+validateAllStock() {
+  const invalidItems = [];
+  
+  this.selectedProducts.forEach((product, productId) => {
+    const maxStock = product.stock || 0;
+    if (product.quantity > maxStock) {
+      invalidItems.push({
+        name: product.name,
+        requested: product.quantity,
+        available: maxStock
+      });
+    }
+  });
+  
+  if (invalidItems.length > 0) {
+    const message = invalidItems.map(item => 
+      `"${item.name}" ต้องการ ${item.requested} ชิ้น แต่คงเหลือ ${item.available} ชิ้น`
+    ).join(', ');
+    
+    return {
+      isValid: false,
+      message: message
+    };
+  }
+  
+  return {
+    isValid: true,
+    message: ''
+  };
 }
 
 /**

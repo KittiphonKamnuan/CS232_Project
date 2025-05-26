@@ -985,7 +985,7 @@ async getStatusTracking(customerId) {
 }
 
 /**
- * อัปเดต Status Tracking (แก้ไขแล้ว)
+ * อัปเดต Status Tracking (ใช้ GetStatusTrackingByID เพื่อดึง quantity และ product_id)
  * @param {string} stateId - รหัสสถานะ
  * @param {Object} updateData - ข้อมูลที่ต้องการอัปเดต
  * @returns {Promise<Object>} - ผลลัพธ์การอัปเดต
@@ -994,15 +994,93 @@ async updateStatusTracking(stateId, updateData) {
   try {
     console.log('Updating status tracking:', stateId, updateData);
     
+    let quantity = null;
+    let productId = null;
+    
+    // ดึงข้อมูล status tracking โดยใช้ GetStatusTrackingByID
+    try {
+      const getByIdUrl = `https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetStatusTrackingByID?id=${encodeURIComponent(stateId)}`;
+      console.log('Getting status tracking data from:', getByIdUrl);
+      
+      const getResponse = await fetch(getByIdUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (getResponse.ok) {
+        const statusData = await getResponse.json();
+        console.log('Status tracking data retrieved:', statusData);
+        
+        // ดึง quantity และ product_id จากข้อมูลที่ได้
+        if (Array.isArray(statusData) && statusData.length > 0) {
+          quantity = parseInt(statusData[0].quantity);
+          productId = statusData[0].product_id;
+        } else if (statusData && typeof statusData === 'object') {
+          quantity = parseInt(statusData.quantity);
+          productId = statusData.product_id;
+        }
+        
+        console.log('Found data for state:', stateId, 'quantity:', quantity, 'product_id:', productId);
+      } else {
+        const errorText = await getResponse.text();
+        console.error('Could not fetch status data:', errorText);
+        throw new Error(`ไม่สามารถดึงข้อมูล status tracking ได้: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error fetching status tracking data:', error);
+      throw new Error('ไม่สามารถดึงข้อมูล status tracking ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+    
+    // ตรวจสอบว่าได้ข้อมูลครบหรือไม่
+    if (!quantity) {
+      throw new Error('ไม่พบข้อมูล quantity ของ status tracking นี้');
+    }
+    
+    if (!productId) {
+      throw new Error('ไม่พบข้อมูล product_id ของ status tracking นี้');
+    }
+    
+    // ตรวจสอบ stock ก่อนเปลี่ยนสถานะเป็น "รอชำระเงิน"
+    if (updateData.customer_status === 'รอชำระเงิน') {
+      try {
+        console.log('Checking product stock for product:', productId);
+        const product = await this.getProductById(productId);
+        
+        if (!product) {
+          throw new Error('ไม่พบข้อมูลสินค้า');
+        }
+        
+        const availableStock = product.stock || 0;
+        console.log('Available stock:', availableStock, 'Required quantity:', quantity);
+        
+        if (availableStock < quantity) {
+          throw new Error(`สินค้าไม่เพียงพอ มีสต็อกเหลือ ${availableStock} ชิ้น แต่ต้องการ ${quantity} ชิ้น`);
+        }
+        
+        if (availableStock === 0) {
+          throw new Error('สินค้าหมดแล้ว ไม่สามารถเปลี่ยนสถานะเป็น "รอชำระเงิน" ได้');
+        }
+        
+      } catch (stockError) {
+        console.error('Stock check error:', stockError);
+        throw stockError; // Re-throw the error to stop the update process
+      }
+    }
+    
+    // เตรียมข้อมูลสำหรับ API Update
     const apiData = {
       "state_id": stateId,
       "customer_status": updateData.customer_status,
-      "notes": updateData.notes || ""
+      "notes": updateData.notes || "",
+      "quantity": quantity,
+      "product_id": productId
     };
     
     console.log('Update API Data to send:', JSON.stringify(apiData, null, 2));
     
-    // ใช้ endpoint ใหม่
+    // ส่งข้อมูลไป UPDATE API
     const response = await fetch(API_ENDPOINTS.UPDATE_STATUS_TRACKING, {
       method: 'PUT',
       headers: {
@@ -1055,7 +1133,48 @@ async updateStatusTracking(stateId, updateData) {
 }
 
 /**
- * ลบ Status Tracking (แก้ไขแล้ว)
+ * ดึงข้อมูล Status Tracking ทั้งหมดจากลูกค้าทั้งหมด
+ * @returns {Promise<Array>} - ข้อมูล Status Tracking ทั้งหมด
+ */
+async getAllStatusTracking() {
+  try {
+    console.log('Getting all status tracking data...');
+    
+    // ดึงข้อมูลลูกค้าทั้งหมดก่อน
+    const allCustomers = await this.getCustomers();
+    console.log('Found customers:', allCustomers.length);
+    
+    // ดึงข้อมูล status tracking ของแต่ละลูกค้า
+    const allStatusTracking = [];
+    
+    for (const customer of allCustomers) {
+      try {
+        const customerStatusTracking = await this.getStatusTracking(customer.id);
+        if (Array.isArray(customerStatusTracking)) {
+          allStatusTracking.push(...customerStatusTracking);
+        }
+        
+        // หน่วงเวลาเล็กน้อยเพื่อไม่ให้ API overload
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (error) {
+        console.warn(`Failed to get status tracking for customer ${customer.id}:`, error.message);
+        // ข้ามลูกค้าที่ดึงข้อมูลไม่ได้
+        continue;
+      }
+    }
+    
+    console.log('Total status tracking records found:', allStatusTracking.length);
+    return allStatusTracking;
+    
+  } catch (error) {
+    console.error('Error getting all status tracking:', error);
+    throw new Error('ไม่สามารถดึงข้อมูล Status Tracking ทั้งหมดได้');
+  }
+}
+
+/**
+ * ลบ Status Tracking (ใช้ GetStatusTrackingByID เพื่อดึง quantity และ product_id)
  * @param {string} stateId - รหัสสถานะ
  * @returns {Promise<boolean>} - สถานะการลบ
  */
@@ -1063,13 +1182,64 @@ async deleteStatusTracking(stateId) {
   try {
     console.log('Deleting status tracking:', stateId);
     
+    let quantity = null;
+    let productId = null;
+    
+    // ดึงข้อมูล status tracking โดยใช้ GetStatusTrackingByID
+    try {
+      const getByIdUrl = `https://rbkou2ngki.execute-api.us-east-1.amazonaws.com/GetStatusTrackingByID?id=${encodeURIComponent(stateId)}`;
+      console.log('Getting status tracking data from:', getByIdUrl);
+      
+      const getResponse = await fetch(getByIdUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (getResponse.ok) {
+        const statusData = await getResponse.json();
+        console.log('Status tracking data retrieved:', statusData);
+        
+        // ดึง quantity และ product_id จากข้อมูลที่ได้
+        if (Array.isArray(statusData) && statusData.length > 0) {
+          quantity = parseInt(statusData[0].quantity);
+          productId = statusData[0].product_id;
+        } else if (statusData && typeof statusData === 'object') {
+          quantity = parseInt(statusData.quantity);
+          productId = statusData.product_id;
+        }
+        
+        console.log('Found data for state:', stateId, 'quantity:', quantity, 'product_id:', productId);
+      } else {
+        const errorText = await getResponse.text();
+        console.error('Could not fetch status data:', errorText);
+        throw new Error(`ไม่สามารถดึงข้อมูล status tracking ได้: ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error fetching status tracking data:', error);
+      throw new Error('ไม่สามารถดึงข้อมูล status tracking ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+    
+    // ตรวจสอบว่าได้ข้อมูลครบหรือไม่
+    if (!quantity) {
+      throw new Error('ไม่พบข้อมูล quantity ของ status tracking นี้');
+    }
+    
+    if (!productId) {
+      throw new Error('ไม่พบข้อมูล product_id ของ status tracking นี้');
+    }
+    
+    // เตรียมข้อมูลสำหรับ API Delete
     const apiData = {
-      "state_id": stateId
+      "state_id": stateId,
+      "quantity": quantity,
+      "product_id": productId
     };
     
     console.log('Delete Status API Data to send:', JSON.stringify(apiData, null, 2));
     
-    // ใช้ endpoint ใหม่
+    // ส่งข้อมูลไป DELETE API
     const response = await fetch(API_ENDPOINTS.DELETE_STATUS_TRACKING, {
       method: 'DELETE',
       headers: {
