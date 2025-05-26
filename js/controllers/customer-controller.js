@@ -15,7 +15,7 @@ class CustomerController {
     this.currentSearchParams = {};
     this.isLoading = false;
     this.currentCustomer = null; // สำหรับหน้า customer details
-
+    
     this.dateFilterSelect = document.getElementById('date-filter-select');
     
     // Pagination
@@ -796,9 +796,6 @@ displayCustomerDetails(customer) {
       </div>
       
       <div class="customer-actions-header">
-        <button class="btn btn-primary btn-large" id="create-sale-btn">
-          <i class="fas fa-shopping-cart"></i> สร้างการขาย
-        </button>
         <button class="btn btn-outline btn-large" id="edit-customer-btn">
           <i class="fas fa-edit"></i> แก้ไขข้อมูล
         </button>
